@@ -36,7 +36,7 @@
 #define _GLIBCXX_RELEASE 14
 
 // The datestamp of the C++ library in compressed ISO date format.
-#define __GLIBCXX__ 20230822
+#define __GLIBCXX__ 20230915
 
 // Macros for various attributes.
 //   _GLIBCXX_PURE
@@ -199,6 +199,15 @@
 #  define _GLIBCXX23_CONSTEXPR constexpr
 # else
 #  define _GLIBCXX23_CONSTEXPR
+# endif
+#endif
+
+// Defined if extra constexpr support is present.
+#define _GLIBCXX_CEST_VERSION 1
+
+#if _GLIBCXX_CEST_VERSION
+# ifndef _GLIBCXX_CEST_CONSTEXPR
+#  define _GLIBCXX_CEST_CONSTEXPR _GLIBCXX23_CONSTEXPR
 # endif
 #endif
 
@@ -854,7 +863,15 @@ namespace __gnu_cxx
 # define _GLIBCXX_HAVE_BUILTIN_LAUNDER 1
 #endif
 
-#undef _GLIBCXX_HAS_BUILTIN
+// Returns 1 if _GLIBCXX_DO_NOT_USE_BUILTIN_TRAITS is not defined and the
+// compiler has a corresponding built-in type trait, 0 otherwise.
+// _GLIBCXX_DO_NOT_USE_BUILTIN_TRAITS can be defined to disable the use of
+// built-in traits.
+#ifndef _GLIBCXX_DO_NOT_USE_BUILTIN_TRAITS
+# define _GLIBCXX_USE_BUILTIN_TRAIT(BT) _GLIBCXX_HAS_BUILTIN(BT)
+#else
+# define _GLIBCXX_USE_BUILTIN_TRAIT(BT) 0
+#endif
 
 // Mark code that should be ignored by the compiler, but seen by Doxygen.
 #define _GLIBCXX_DOXYGEN_ONLY(X)
@@ -1259,7 +1276,7 @@ namespace __gnu_cxx
 #define _GLIBCXX_HAVE_SQRTL 1
 
 /* Define if the <stacktrace> header is supported. */
-/* #undef _GLIBCXX_HAVE_STACKTRACE */
+#define _GLIBCXX_HAVE_STACKTRACE 1
 
 /* Define to 1 if you have the <stdalign.h> header file. */
 #define _GLIBCXX_HAVE_STDALIGN_H 1
@@ -1320,7 +1337,7 @@ namespace __gnu_cxx
 /* #undef _GLIBCXX_HAVE_SYS_MACHINE_H */
 
 /* Define to 1 if you have the <sys/mman.h> header file. */
-/* #undef _GLIBCXX_HAVE_SYS_MMAN_H */
+#define _GLIBCXX_HAVE_SYS_MMAN_H 1
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #define _GLIBCXX_HAVE_SYS_PARAM_H 1
@@ -1848,6 +1865,12 @@ namespace __gnu_cxx
    namespace std::tr1. */
 #define _GLIBCXX_USE_C99_STDINT_TR1 1
 
+/* Define if usable chdir is available in <unistd.h>. */
+#define _GLIBCXX_USE_CHDIR 1
+
+/* Define if usable chmod is available in <sys/stat.h>. */
+#define _GLIBCXX_USE_CHMOD 1
+
 /* Defined if clock_gettime syscall has monotonic and realtime clock support.
    */
 /* #undef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL */
@@ -1878,6 +1901,9 @@ namespace __gnu_cxx
 /* Define if fseeko and ftello are available. */
 #define _GLIBCXX_USE_FSEEKO_FTELLO 1
 
+/* Define if usable getcwd is available in <unistd.h>. */
+#define _GLIBCXX_USE_GETCWD 1
+
 /* Defined if gettimeofday is available. */
 #define _GLIBCXX_USE_GETTIMEOFDAY 1
 
@@ -1895,6 +1921,9 @@ namespace __gnu_cxx
 
 /* Define if lstat is available in <sys/stat.h>. */
 #define _GLIBCXX_USE_LSTAT 1
+
+/* Define if usable mkdir is available in <sys/stat.h>. */
+#define _GLIBCXX_USE_MKDIR 1
 
 /* Defined if nanosleep is available. */
 #define _GLIBCXX_USE_NANOSLEEP 1

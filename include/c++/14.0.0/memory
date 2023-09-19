@@ -93,6 +93,7 @@
 
 #define __glibcxx_want_atomic_value_initialization
 #define __glibcxx_want_parallel_algorithm
+#define __glibcxx_want_constexpr_shared_ptr
 #include <bits/version.h>
 
 #if __cplusplus >= 201103L && __cplusplus <= 202002L && _GLIBCXX_HOSTED

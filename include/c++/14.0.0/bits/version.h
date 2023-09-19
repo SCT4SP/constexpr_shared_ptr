@@ -1977,4 +1977,15 @@
 #endif /* !defined(__cpp_lib_to_string) && defined(__glibcxx_want_to_string) */
 #undef __glibcxx_want_to_string
 
+// added by hand to allow a useful macro: __cpp_lib_constexpr_shared_ptr
+#if !defined(__cpp_lib_constexpr_shared_ptr)
+# if (__cplusplus >= 202400L)
+#  define __glibcxx_constexpr_shared_ptr 202309L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_constexpr_shared_ptr)
+#   define __cpp_lib_constexpr_shared_ptr 202309L
+#  endif
+# endif
+#endif /* !defined(__cpp_lib_constexpr_shared_ptr) && defined(__glibcxx_want_constexpr_shared_ptr) */
+#undef __glibcxx_want_constexpr_shared_ptr
+
 #undef __glibcxx_want_all

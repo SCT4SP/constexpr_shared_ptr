@@ -1,6 +1,7 @@
 #include <cassert>
 #include <memory>
 #include <iostream>
+#include <tuple>
 #define VERIFY assert
 #include "testsuite_allocator.h"
 
@@ -564,6 +565,20 @@ constexpr bool allocate_shared_tests()
   return b;
 }
 
+constexpr bool shared_owner()
+{
+  bool b{true};
+
+  std::shared_ptr<std::pair<int,int>> pii(new std::pair<int,int>());
+  std::shared_ptr<int> pi1(pii, &pii->first);
+  b == b && pii.use_count() == 2;
+
+  std::shared_ptr<int> pi2(std::move(pii), &pii->second);
+  b = b && pii.use_count() == 0;
+
+  return b;
+}
+
 void memory_tests() {
   static_assert(constexpr_mem_test<std::unique_ptr>(),
                 "unique_ptr: Tests failed!");
@@ -608,6 +623,9 @@ void memory_tests() {
 
   assert(allocate_shared_tests());
   static_assert(allocate_shared_tests());
+
+  assert(shared_owner());
+  static_assert(shared_owner());
 }
 
 int main(int argc, char *argv[])

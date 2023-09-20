@@ -1634,6 +1634,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Aliasing constructor
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(__shared_ptr<_Yp, _Lp>&& __r,
 		     element_type* __p) noexcept
 	: _M_ptr(__p), _M_refcount()

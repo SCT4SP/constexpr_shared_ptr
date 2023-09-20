@@ -357,6 +357,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        * @endcode
        */
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(shared_ptr<_Yp>&& __r, element_type* __p) noexcept
 	: __shared_ptr<_Tp>(std::move(__r), __p) { }
 #endif

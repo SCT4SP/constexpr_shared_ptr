@@ -571,7 +571,7 @@ constexpr bool shared_owner()
 
   std::shared_ptr<std::pair<int,int>> pii(new std::pair<int,int>());
   std::shared_ptr<int> pi1(pii, &pii->first);
-  b == b && pii.use_count() == 2;
+  b = b && pii.use_count() == 2;
 
   std::shared_ptr<int> pi2(std::move(pii), &pii->second);
   b = b && pii.use_count() == 0;

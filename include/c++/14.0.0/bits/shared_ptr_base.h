@@ -595,6 +595,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       using __allocator_type = __alloc_rebind<_Alloc, _Sp_counted_deleter>;
 
       // __d(__p) must not throw.
+      _GLIBCXX26_CONSTEXPR
       _Sp_counted_deleter(_Ptr __p, _Deleter __d) noexcept
       : _M_impl(__p, std::move(__d), _Alloc()) { }
 
@@ -1138,6 +1139,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // Special case for unique_ptr<_Tp,_Del> to provide the strong guarantee.
       template<typename _Tp, typename _Del>
         explicit
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(std::unique_ptr<_Tp, _Del>&& __r) : _M_pi(0)
 	{
 	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
@@ -1681,6 +1683,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // If an exception is thrown this constructor has no effect.
       template<typename _Yp, typename _Del,
 	       typename = _UniqCompatible<_Yp, _Del>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(unique_ptr<_Yp, _Del>&& __r)
 	: _M_ptr(__r.get()), _M_refcount()
 	{

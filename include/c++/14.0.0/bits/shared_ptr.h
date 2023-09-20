@@ -416,6 +416,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // 2399. shared_ptr's constructor from unique_ptr should be constrained
       template<typename _Yp, typename _Del,
 	       typename = _Constructible<unique_ptr<_Yp, _Del>>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(unique_ptr<_Yp, _Del>&& __r)
 	: __shared_ptr<_Tp>(std::move(__r)) { }
 

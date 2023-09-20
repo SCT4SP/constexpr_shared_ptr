@@ -576,6 +576,14 @@ constexpr bool shared_owner()
   std::shared_ptr<int> pi2(std::move(pii), &pii->second);
   b = b && pii.use_count() == 0;
 
+  // shared_ptr ctor from unique_ptr
+  struct A {};
+  std::unique_ptr<A> up(new A);
+  std::shared_ptr<A> sp(std::move(up));
+  b = b && up.get() == 0;
+  b = b && sp.get() != 0;
+  b = b && sp.use_count() == 1;
+
   return b;
 }
 
@@ -632,5 +640,6 @@ int main(int argc, char *argv[])
 {
   static_assert(__cpp_lib_constexpr_shared_ptr);
   memory_tests();
+
   return 0;
 }

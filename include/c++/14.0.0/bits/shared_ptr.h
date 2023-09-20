@@ -1025,7 +1025,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr auto
   cest_allocate_shared(const _Alloc& __a, size_t __n, _Args&&... __args)
   {
-//    using _Up = remove_cv_t<remove_all_extents_t<_Tp>>;
     using _Up = remove_extent_t<_Tp>;
     using _Alloc_traits = allocator_traits<_Alloc>;
     using _Alloc2 = _Alloc_traits::template rebind_alloc<_Up>;

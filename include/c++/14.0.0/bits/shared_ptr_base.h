@@ -1762,6 +1762,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Del>
+	_GLIBCXX26_CONSTEXPR
 	_UniqAssignable<_Yp, _Del>
 	operator=(unique_ptr<_Yp, _Del>&& __r)
 	{

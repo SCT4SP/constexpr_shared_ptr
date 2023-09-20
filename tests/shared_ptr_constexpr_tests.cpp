@@ -577,12 +577,18 @@ constexpr bool shared_owner()
   b = b && pii.use_count() == 0;
 
   // shared_ptr ctor from unique_ptr
-  struct A {};
-  std::unique_ptr<A> up(new A);
+  struct A { int i_; };
+  std::unique_ptr<A> up(new A{42});
   std::shared_ptr<A> sp(std::move(up));
   b = b && up.get() == 0;
   b = b && sp.get() != 0;
   b = b && sp.use_count() == 1;
+
+  // assignment from unique_ptr&&
+  std::unique_ptr<A> up2(new A{42});
+  std::shared_ptr<A> sp2{};
+  sp2 = std::move(up2);
+  b = b && sp2->i_ == 42;
 
   return b;
 }

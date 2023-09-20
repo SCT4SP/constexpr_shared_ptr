@@ -38,7 +38,9 @@ support. (See `_Guarded_ptr` and elsewhere.) Consequently, a new function was
 added (`cest_allocate_shared`), which allocates the managed elements
 separately, before relying on the existing ternary `std::shared_ptr`
 constructor. This is defined in `shared_ptr.h`, and used there by all
-`std::make_shared*` and `std::allocate_shared*` function templates.
+`std::make_shared*` and `std::allocate_shared*` function templates.  The
+`constexpr` specifier is of course also added throughout; via
+`_GLIBCXX26_CONSTEXPR`.
 
 The following `git` command shows the files which differ between the
 `constexpr` and `master` branches. The `master` branch is created from an

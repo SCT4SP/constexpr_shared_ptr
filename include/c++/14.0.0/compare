@@ -33,6 +33,7 @@
 #pragma GCC system_header
 
 #define __glibcxx_want_three_way_comparison
+#define __glibcxx_want_constexpr_shared_ptr
 #include <bits/version.h>
 
 #if __cplusplus > 201703L && __cpp_impl_three_way_comparison >= 201907L
@@ -551,7 +552,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
       {
 	if constexpr (__detail::__3way_builtin_ptr_cmp<_Tp, _Up>)
 	  {
-#if defined(_GLIBCXX_CEST_VERSION) && defined(__clang__)
+#if defined(__cpp_lib_constexpr_shared_ptr) && defined(__clang__)
 	    // Workaround until constexpr void pointer comparison is permitted:
 	    // https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#2749
 	    if (std::__is_constant_evaluated())

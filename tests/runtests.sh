@@ -6,6 +6,7 @@ MYGCC="/opt/gcc-latest/bin/g++ -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PAT
 MYGCCFLAGS="-g -std=c++26 -Winvalid-constexpr -fsanitize=address -static-libasan -I ${MYINCLUDE} -I ${MYINCLUDE}/x86_64-pc-linux-gnu"
 
 echo "Testing with GCC"
+echo ${MYGCC} ${MYGCCFLAGS} shared_ptr_constexpr_tests.cpp && ./a.out
 ${MYGCC} ${MYGCCFLAGS} shared_ptr_constexpr_tests.cpp && ./a.out
 
 

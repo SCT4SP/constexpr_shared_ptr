@@ -619,6 +619,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { return compare_three_way()(__a.get(), __b.get()); }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline strong_ordering
     operator<=>(const shared_ptr<_Tp>& __a, nullptr_t) noexcept
     {

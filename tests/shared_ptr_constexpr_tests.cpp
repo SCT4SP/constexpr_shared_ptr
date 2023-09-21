@@ -565,7 +565,7 @@ constexpr bool allocate_shared_tests()
   return b;
 }
 
-constexpr bool shared_owner()
+constexpr bool more_tests()
 {
   bool b{true};
 
@@ -594,6 +594,9 @@ constexpr bool shared_owner()
   // constructor overload 9
   std::shared_ptr<B> spb(new B{43});
   std::shared_ptr<A> spa(spb);
+  b = b && spa->i_ == 43;
+
+  b = b && sp > nullptr; // operator<=> with nullptr_t as second parameter type
 
   return b;
 }
@@ -643,8 +646,8 @@ void memory_tests() {
   assert(allocate_shared_tests());
   static_assert(allocate_shared_tests());
 
-  assert(shared_owner());
-  static_assert(shared_owner());
+  assert(more_tests());
+  static_assert(more_tests());
 }
 
 int main(int argc, char *argv[])

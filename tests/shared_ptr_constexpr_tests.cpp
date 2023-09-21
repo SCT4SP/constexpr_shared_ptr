@@ -601,6 +601,71 @@ constexpr bool more_tests()
   return b;
 }
 
+namespace cast_tests
+{
+  struct MyP { constexpr virtual ~MyP() { }; };
+  struct MyDP : MyP { };
+
+  template<typename R, typename T>
+  constexpr typename std::enable_if_t<std::is_same_v<R, T>, bool>
+  check_ret_type(T) { return true; }
+
+  constexpr bool run()
+  {
+    using std::shared_ptr;
+    using std::static_pointer_cast;
+    using std::const_pointer_cast;
+    using std::dynamic_pointer_cast;
+
+    // from test01 in 1.cc
+    shared_ptr<double> spd;
+    shared_ptr<const int> spci;
+    shared_ptr<MyP> spa;
+
+    check_ret_type<shared_ptr<void>>(static_pointer_cast<void>(spd));
+    check_ret_type<shared_ptr<int>>(const_pointer_cast<int>(spci));
+    // Non-polymorphic dynamic_cast works without RTTI.
+    check_ret_type<shared_ptr<MyP>>(dynamic_pointer_cast<MyP>(spa));
+  #if __cpp_rtti
+    // But polymorphic dynamic_cast needs RTTI.
+    check_ret_type<shared_ptr<MyDP>>(dynamic_pointer_cast<MyDP>(spa));
+  #endif
+
+    // from test02 in 1.cc
+    bool b{true};
+    int* ptr = new int(1);
+    shared_ptr<const void> pcv(ptr);
+    auto pci = static_pointer_cast<const int>(pcv);
+    b = b && (pci.use_count() == 2);
+    b = b && (pcv.use_count() == 2);
+    b = b && (pci.get() == ptr);
+    b = b && (pcv.get() == ptr);
+    auto pi = const_pointer_cast<int>(pci);
+    b = b && (pi.use_count() == 3);
+    b = b && (pcv.use_count() == 3);
+    b = b && (pi.get() == ptr);
+    b = b && (pci.get() == ptr);
+
+  #if __cpp_rtti
+    MyP* pptr = new MyP;
+    shared_ptr<MyP> pp(pptr);
+    auto pdp = dynamic_pointer_cast<MyDP>(pp);
+    b = b && (pp.use_count() == 1);
+    b = b && (pdp.use_count() == 0);
+    b = b && (pdp.get() == nullptr);
+    b = b && (pp.get() == pptr);
+    pptr = new MyDP;
+    pp.reset(pptr);
+    pdp = dynamic_pointer_cast<MyDP>(pp);
+    b = b && (pp.use_count() == 2);
+    b = b && (pdp.use_count() == 2);
+    b = b && (pdp.get() == pptr);
+    b = b && (pp.get() == pptr);
+  #endif
+    return true;
+  }
+}
+
 void memory_tests() {
   static_assert(constexpr_mem_test<std::unique_ptr>(),
                 "unique_ptr: Tests failed!");
@@ -648,6 +713,9 @@ void memory_tests() {
 
   assert(more_tests());
   static_assert(more_tests());
+
+  assert(cast_tests::run());
+  static_assert(cast_tests::run());
 }
 
 int main(int argc, char *argv[])

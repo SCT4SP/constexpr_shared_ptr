@@ -796,6 +796,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `static_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     static_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {
@@ -807,6 +808,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `const_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     const_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {
@@ -818,6 +820,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `dynamic_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     dynamic_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {

@@ -616,12 +616,14 @@ namespace cast_tests
     using std::static_pointer_cast;
     using std::const_pointer_cast;
     using std::dynamic_pointer_cast;
+    bool b{true};
 
-    // from test01 in 1.cc
+    { // shared_ptr cast tests
     shared_ptr<double> spd;
     shared_ptr<const int> spci;
     shared_ptr<MyP> spa;
 
+    // from test01 in 1.cc
     check_ret_type<shared_ptr<void>>(static_pointer_cast<void>(spd));
     check_ret_type<shared_ptr<int>>(const_pointer_cast<int>(spci));
     // Non-polymorphic dynamic_cast works without RTTI.
@@ -632,7 +634,6 @@ namespace cast_tests
   #endif
 
     // from test02 in 1.cc
-    bool b{true};
     int* ptr = new int(1);
     shared_ptr<const void> pcv(ptr);
     auto pci = static_pointer_cast<const int>(pcv);
@@ -662,6 +663,51 @@ namespace cast_tests
     b = b && (pdp.get() == pptr);
     b = b && (pp.get() == pptr);
   #endif
+    } // test01 ends
+    { // rval tests begins
+    shared_ptr<double> spd;
+    shared_ptr<const int> spci;
+    shared_ptr<MyP> spa;
+
+    // from test01 in rval.cc
+    check_ret_type<shared_ptr<void>>(static_pointer_cast<void>(std::move(spd)));
+    check_ret_type<shared_ptr<int>>(const_pointer_cast<int>(std::move(spci)));
+    check_ret_type<shared_ptr<MyP>>(dynamic_pointer_cast<MyP>(std::move(spa)));
+  #if __cpp_rtti
+   check_ret_type<shared_ptr<MyDP>>(dynamic_pointer_cast<MyDP>(std::move(spa)));
+  #endif
+
+    // from test02 in rval.cc
+    int* ptr = new int(1);
+    shared_ptr<const void> pcv(ptr);
+    auto pci = static_pointer_cast<const int>(std::move(pcv));
+    b = b && (pci.use_count() == 1);
+    b = b && (pcv.use_count() == 0);
+    b = b && (pci.get() == ptr);
+    b = b && (pcv.get() == nullptr);
+    auto pi = const_pointer_cast<int>(std::move(pci));
+    b = b && (pi.use_count() == 1);
+    b = b && (pci.use_count() == 0);
+    b = b && (pi.get() == ptr);
+    b = b && (pci.get() == nullptr);
+
+  #if __cpp_rtti
+    MyP* pptr = new MyP;
+    shared_ptr<MyP> pp(pptr);
+    auto pdp = dynamic_pointer_cast<MyDP>(std::move(pp));
+    b = b && (pdp.use_count() == 0);
+    b = b && (pp.use_count() == 1);
+    b = b && (pdp.get() == nullptr);
+    b = b && (pp.get() == pptr);
+    pptr = new MyDP;
+    pp.reset(pptr);
+    pdp = dynamic_pointer_cast<MyDP>(std::move(pp));
+    b = b && (pdp.use_count() == 1);
+    b = b && (pp.use_count() == 0);
+    b = b && (pdp.get() == pptr);
+    b = b && (pp.get() == nullptr);
+  #endif
+    } // rval tests end
     return true;
   }
 }

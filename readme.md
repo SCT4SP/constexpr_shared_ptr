@@ -30,7 +30,7 @@ proposal P2738 in GCC and Clang; which allows `constexpr` casting from `void*`;
 visible in the `get_deleter` implementation. `constexpr` incompatible atomic
 operations have been avoided, under the asumption that constant expression
 evaluation will be single-threaded (see `_M_add_ref_copy` in
-`shared_ptr_base.h` for example). Lastly, the prior implementation of the
+`shared_ptr_base.h` for example). Then, the libstdc++ implementation of the
 `std::make_shared*` and `std::allocate_shared*` families were making use of a
 single (untyped) allocation to store both the control block, and the managed
 element(s). This was relying on casts which are not permitted by C++26's P2738
@@ -38,9 +38,13 @@ support. (See `_Guarded_ptr` and elsewhere.) Consequently, a new function was
 added (`cest_allocate_shared`), which allocates the managed elements
 separately, before relying on the existing ternary `std::shared_ptr`
 constructor. This is defined in `shared_ptr.h`, and used there by all
-`std::make_shared*` and `std::allocate_shared*` function templates.  The
-`constexpr` specifier is of course also added throughout; via
-`_GLIBCXX26_CONSTEXPR`.
+`std::make_shared*` and `std::allocate_shared*` function templates.
+Clang-specific modifications are also included within the pointer handling
+section of the `compare_three_way` implementation in the `compare header`. It
+is anticipated that these will soon not be required, once [CWG Issue
+2749](https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#2749) is
+approved.  Lastly, the `constexpr` specifier is of course also added
+throughout; via `_GLIBCXX26_CONSTEXPR`.
 
 The following `git` command shows the files which differ between the
 `constexpr` and `master` branches. The `master` branch is created from an

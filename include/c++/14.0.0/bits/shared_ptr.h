@@ -370,6 +370,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        */
       template<typename _Yp,
 	       typename = _Constructible<const shared_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(const shared_ptr<_Yp>& __r) noexcept
         : __shared_ptr<_Tp>(__r) { }
 

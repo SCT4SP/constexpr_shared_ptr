@@ -578,6 +578,7 @@ constexpr bool shared_owner()
 
   // shared_ptr ctor from unique_ptr
   struct A { int i_; };
+  struct B : public A {};
   std::unique_ptr<A> up(new A{42});
   std::shared_ptr<A> sp(std::move(up));
   b = b && up.get() == 0;
@@ -589,6 +590,10 @@ constexpr bool shared_owner()
   std::shared_ptr<A> sp2{};
   sp2 = std::move(up2);
   b = b && sp2->i_ == 42;
+
+  // constructor overload 9
+  std::shared_ptr<B> spb(new B{43});
+  std::shared_ptr<A> spa(spb);
 
   return b;
 }

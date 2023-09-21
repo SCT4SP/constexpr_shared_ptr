@@ -1650,6 +1650,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       ~__shared_ptr() = default;
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(const __shared_ptr<_Yp, _Lp>& __r) noexcept
 	: _M_ptr(__r._M_ptr), _M_refcount(__r._M_refcount)
 	{ }

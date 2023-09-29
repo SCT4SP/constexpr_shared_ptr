@@ -36,7 +36,7 @@
 #define _GLIBCXX_RELEASE 14
 
 // The datestamp of the C++ library in compressed ISO date format.
-#define __GLIBCXX__ 20230915
+#define __GLIBCXX__ 20230929
 
 // Macros for various attributes.
 //   _GLIBCXX_PURE
@@ -199,6 +199,15 @@
 #  define _GLIBCXX23_CONSTEXPR constexpr
 # else
 #  define _GLIBCXX23_CONSTEXPR
+# endif
+#endif
+
+// Defined if extra constexpr support is present.
+#define _GLIBCXX_CEST_VERSION 1
+
+#if _GLIBCXX_CEST_VERSION
+# ifndef _GLIBCXX_CEST_CONSTEXPR
+#  define _GLIBCXX_CEST_CONSTEXPR _GLIBCXX23_CONSTEXPR
 # endif
 #endif
 
@@ -1989,6 +1998,9 @@ namespace __gnu_cxx
 
 /* Defined if Sleep exists. */
 /* #undef _GLIBCXX_USE_WIN32_SLEEP */
+
+/* Define if _get_osfhandle should be used for filebuf::native_handle(). */
+/* #undef _GLIBCXX_USE__GET_OSFHANDLE */
 
 /* Define to 1 if a verbose library is built, or 0 otherwise. */
 #define _GLIBCXX_VERBOSE 1

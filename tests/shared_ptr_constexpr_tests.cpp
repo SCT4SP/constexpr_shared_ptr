@@ -787,7 +787,13 @@ namespace esft_tests
 {
   struct Good : public std::enable_shared_from_this<Good>
   {
+    constexpr Good() noexcept = default;
+    constexpr Good(const Good&) noexcept = default;
+    constexpr Good& operator=(const Good&) noexcept = default;
     constexpr std::shared_ptr<Good> getptr() { return shared_from_this(); }
+    constexpr std::shared_ptr<const Good> getptr() const {
+      return shared_from_this();
+    }
   };
 
   constexpr bool run()
@@ -796,11 +802,20 @@ namespace esft_tests
     std::shared_ptr<Good> good0 = std::make_shared<Good>();
     std::shared_ptr<Good> good1 = good0->getptr();
     b = good1.use_count() == 2;
+    std::shared_ptr<Good> good2{good1};
+    good2 = good1;
+    b = good1.use_count() == 3;
+    const std::shared_ptr<Good> good3 = std::make_shared<Good>();
+    std::shared_ptr<const Good> good4 = good3->getptr();
+    b = good1.use_count() == 3 && good4.use_count() == 2;
+    good1->weak_from_this();
+    good4->weak_from_this();
     return b;
   }
 }
 
-void memory_tests() {
+void memory_tests()
+{
   static_assert(constexpr_mem_test<std::unique_ptr>(),
                 "unique_ptr: Tests failed!");
   static_assert(make_unique_test(), "make_unique: Tests failed!");

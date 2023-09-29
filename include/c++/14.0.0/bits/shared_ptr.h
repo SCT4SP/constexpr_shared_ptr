@@ -402,6 +402,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *          in which case the constructor has no effect.
        */
       template<typename _Yp, typename = _Constructible<const weak_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	explicit shared_ptr(const weak_ptr<_Yp>& __r)
 	: __shared_ptr<_Tp>(__r) { }
 
@@ -577,6 +578,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
       // This constructor is non-standard, it is used by weak_ptr::lock().
+      _GLIBCXX26_CONSTEXPR
       shared_ptr(const weak_ptr<_Tp>& __r, std::nothrow_t) noexcept
       : __shared_ptr<_Tp>(__r, std::nothrow) { }
 
@@ -883,18 +885,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       template<typename _Yp,
 	       typename = _Constructible<const shared_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(const shared_ptr<_Yp>& __r) noexcept
 	: __weak_ptr<_Tp>(__r) { }
 
       weak_ptr(const weak_ptr&) noexcept = default;
 
       template<typename _Yp, typename = _Constructible<const weak_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(const weak_ptr<_Yp>& __r) noexcept
 	: __weak_ptr<_Tp>(__r) { }
 
       weak_ptr(weak_ptr&&) noexcept = default;
 
       template<typename _Yp, typename = _Constructible<weak_ptr<_Yp>>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(weak_ptr<_Yp>&& __r) noexcept
 	: __weak_ptr<_Tp>(std::move(__r)) { }
 
@@ -902,6 +907,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(const weak_ptr& __r) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<const weak_ptr<_Yp>&>
 	operator=(const weak_ptr<_Yp>& __r) noexcept
 	{
@@ -910,6 +916,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<const shared_ptr<_Yp>&>
 	operator=(const shared_ptr<_Yp>& __r) noexcept
 	{
@@ -921,6 +928,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(weak_ptr&& __r) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<weak_ptr<_Yp>>
 	operator=(weak_ptr<_Yp>&& __r) noexcept
 	{
@@ -928,6 +936,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return *this;
 	}
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       lock() const noexcept
       { return shared_ptr<_Tp>(*this, std::nothrow); }
@@ -942,6 +951,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Swap overload for weak_ptr
   /// @relates weak_ptr
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline void
     swap(weak_ptr<_Tp>& __a, weak_ptr<_Tp>& __b) noexcept
     { __a.swap(__b); }
@@ -985,9 +995,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(const enable_shared_from_this&) noexcept
       { return *this; }
 
+      _GLIBCXX26_CONSTEXPR
       ~enable_shared_from_this() { }
 
     public:
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       shared_from_this()
       { return shared_ptr<_Tp>(this->_M_weak_this); }
@@ -1013,11 +1025,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     private:
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_weak_assign(_Tp1* __p, const __shared_count<>& __n) const noexcept
 	{ _M_weak_this._M_assign(__p, __n); }
 
       // Found by ADL when this is an associated class.
+      _GLIBCXX26_CONSTEXPR
       friend const enable_shared_from_this*
       __enable_shared_from_this_base(const __shared_count<>&,
 				     const enable_shared_from_this* __p)

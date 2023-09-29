@@ -557,7 +557,8 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	    // https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#2749
 	    if (std::__is_constant_evaluated())
 	    {
-	      if (__t == nullptr || __u == nullptr) // special handling of nullptr
+	      // Also, special nullptr handling; as at runtime, and GCC compile-time.
+	      if (__t == nullptr || __u == nullptr)
 	        return (__t ? 1 : 0) <=> (__u ? 1 : 0);
 	      return static_cast<_Tp&&>(__t) <=> static_cast<_Up&&>(__u);
 	    }

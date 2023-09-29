@@ -4,6 +4,7 @@
 #include <tuple>
 #define VERIFY assert
 #include "testsuite_allocator.h"
+#include "constexpr-pool-allocator.hpp"
 
 template <template <typename...> typename U>
 constexpr bool constexpr_mem_test() {
@@ -431,47 +432,44 @@ constexpr bool shared_ptr_assign()
 
 constexpr bool owner_before_test()
 {
-  struct A
-  {
-    int i;
-    constexpr virtual ~A() { }
-  };
-
-  struct B : A
-  {
-  };
+  struct A { int i; };
 
   bool b{true};
   // test empty shared_ptrs compare equivalent
   std::shared_ptr<A> p1;
-  std::shared_ptr<B> p2;
+  std::shared_ptr<A> p2;
   b = b && ( !p1.owner_before(p2) && !p2.owner_before(p1) );
 
   // Construction from pointer
-  std::shared_ptr<A> a0;
-  std::shared_ptr<A> a1(new A);
-#if CONSTEXPR_FRIENDLY_COMPARISON
-  // need an updated std::less
-  b = b && (   a1.owner_before(a0) || a0.owner_before(a1) );
-  b = b && ( !(a1.owner_before(a0) && a0.owner_before(a1)) );
-#endif
+  using block_t =
+    std::_Sp_counted_deleter<A*,
+                             std::default_delete<A>,
+                             pool_alloc<A>,
+                             __gnu_cxx::_S_atomic>;
+  std::allocator<block_t> alloc;
+  block_t* p = alloc.allocate(2);
+  pool_alloc<A> pa1{p}, pa2{p+1};
+  {
+    std::shared_ptr<A> a0;
+    std::shared_ptr<A> a1(new A, std::default_delete<A>(), pa1);
+    b = b && (   a1.owner_before(a0) || a0.owner_before(a1) );
+    b = b && ( !(a1.owner_before(a0) && a0.owner_before(a1)) );
 
-  std::shared_ptr<B> b1(new B);
-#if CONSTEXPR_FRIENDLY_COMPARISON
-  // need an updated std::less
-  b = b && (   a1.owner_before(b1) || b1.owner_before(a1) );
-  b = b && ( !(a1.owner_before(b1) && b1.owner_before(a1)) );
-#endif
+    std::shared_ptr<A> b1(new A, std::default_delete<A>(), pa2);
+    b = b && (   a1.owner_before(b1) || b1.owner_before(a1) );
+    b = b && ( !(a1.owner_before(b1) && b1.owner_before(a1)) );
 
-  std::shared_ptr<A> a2(a1);
-  b = b && ( !a1.owner_before(a2) && !a2.owner_before(a1) );
-  a2 = b1;
-  b = b && ( !b1.owner_before(a2) && !a2.owner_before(b1) );
+    std::shared_ptr<A> a2(a1);
+    b = b && ( !a1.owner_before(a2) && !a2.owner_before(a1) );
+    a2 = b1;
+    b = b && ( !b1.owner_before(a2) && !a2.owner_before(b1) );
 
-  // these need only be run once
-  static_assert( noexcept(a1.owner_before(a0)) );
-  static_assert( noexcept(a1.owner_before(b1)) );
-  static_assert( noexcept(b1.owner_before(a1)) );
+    // these need only be run once
+    static_assert( noexcept(a1.owner_before(a0)) );
+    static_assert( noexcept(a1.owner_before(b1)) );
+    static_assert( noexcept(b1.owner_before(a1)) );
+  }
+  alloc.deallocate(p, 2);
 
   // Aliasing
   std::shared_ptr<A>   p3(new A());
@@ -648,6 +646,7 @@ namespace cast_tests
     b = b && (pci.get() == ptr);
 
   #if __cpp_rtti
+#ifdef __clang__  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106107
     MyP* pptr = new MyP;
     shared_ptr<MyP> pp(pptr);
     auto pdp = dynamic_pointer_cast<MyDP>(pp);
@@ -662,6 +661,7 @@ namespace cast_tests
     b = b && (pdp.use_count() == 2);
     b = b && (pdp.get() == pptr);
     b = b && (pp.get() == pptr);
+#endif
   #endif
     } // test01 ends
     { // rval tests begins
@@ -692,6 +692,7 @@ namespace cast_tests
     b = b && (pci.get() == nullptr);
 
   #if __cpp_rtti
+#ifdef __clang__  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106107
     MyP* pptr = new MyP;
     shared_ptr<MyP> pp(pptr);
     auto pdp = dynamic_pointer_cast<MyDP>(std::move(pp));
@@ -706,9 +707,96 @@ namespace cast_tests
     b = b && (pp.use_count() == 0);
     b = b && (pdp.get() == pptr);
     b = b && (pp.get() == nullptr);
+#endif
   #endif
     } // rval tests end
-    return true;
+    return b;
+  }
+} // namespace cast_tests
+
+namespace weak_ptr_tests
+{
+  template <typename T, typename U> struct require_same;
+  template <typename T> struct require_same<T, T> { using type = void; };
+  template <typename T, typename U>
+  constexpr typename require_same<T, U>::type check_type(U&) { }
+
+  struct A { };
+  struct B : A { };
+
+  constexpr bool run()
+  {
+    bool b{true};
+    {
+      A * const a = new A;
+      std::shared_ptr<A> a1(a);
+      std::weak_ptr<A> wa(a1);
+      std::shared_ptr<A> a2(wa);
+      b = b && ( a2.get() == a );
+      b = b && ( a2.use_count() == wa.use_count() );
+
+      std::shared_ptr<A> a3(new A);
+      std::weak_ptr<A> wa2(a3);
+      a3.reset();
+      b = b && ( wa2.expired() );
+    }
+
+    using block_t =
+      std::_Sp_counted_deleter<A*,
+                               std::default_delete<A>,
+                               pool_alloc<A>,
+                               __gnu_cxx::_S_atomic>;
+    std::allocator<block_t> alloc;
+    block_t* p = alloc.allocate(2);
+    pool_alloc<A> pa1{p}, pa2{p+1};
+    {
+      std::shared_ptr<A> a1(new A, std::default_delete<A>(), pa1);
+      std::shared_ptr<A> b1(new A, std::default_delete<A>(), pa2);
+      std::shared_ptr<A> a2(a1);
+      a2 = b1;
+
+      std::weak_ptr<A> w1(a1);
+      b = b && (  !a1.owner_before(w1) && !w1.owner_before(a1) );
+      std::weak_ptr<A> w2(a2);
+      b = b && (  !b1.owner_before(w2) && !w2.owner_before(b1) );
+      b = b && (   w1.owner_before(w2) ||  w2.owner_before(w1) );
+      b = b && ( !(w1.owner_before(w2) &&  w2.owner_before(w1)) );
+      auto own_less = std::owner_less<void>();
+      b = b && ( !own_less(b1,w2) && !own_less(w2,b1) );
+      b = b && (  own_less(w1,w2) ||  own_less(w2,w1) );
+      b = b && (  own_less(a1,b1) ||  own_less(b1,a1) );
+      std::weak_ptr<B> wB{};
+      std::weak_ptr<A> wA{wB};
+      std::weak_ptr<A> wA2{std::move(wB)};
+      wA = wB;
+      wA = std::move(wB);
+      wA = a1;
+      wA.lock();
+      b = b && !wA.expired() && wA.use_count() == 1;
+      wA.swap(wA2);
+      std::swap(wA,wA2);
+      wA.reset();
+    }
+    alloc.deallocate(p, 2);
+
+    return b;
+  }
+} // namespace weak_ptr_types
+
+namespace esft_tests
+{
+  struct Good : public std::enable_shared_from_this<Good>
+  {
+    constexpr std::shared_ptr<Good> getptr() { return shared_from_this(); }
+  };
+
+  constexpr bool run()
+  {
+    bool b{true};
+    std::shared_ptr<Good> good0 = std::make_shared<Good>();
+    std::shared_ptr<Good> good1 = good0->getptr();
+    b = good1.use_count() == 2;
+    return b;
   }
 }
 
@@ -762,6 +850,12 @@ void memory_tests() {
 
   assert(cast_tests::run());
   static_assert(cast_tests::run());
+
+  assert(weak_ptr_tests::run());
+  static_assert(weak_ptr_tests::run());
+
+  assert(esft_tests::run());
+  static_assert(esft_tests::run());
 }
 
 int main(int argc, char *argv[])

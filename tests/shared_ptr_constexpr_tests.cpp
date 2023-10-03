@@ -876,6 +876,7 @@ void memory_tests()
 int main(int argc, char *argv[])
 {
   static_assert(__cpp_lib_constexpr_shared_ptr);
+  static_assert(__gnu_cxx::__is_single_threaded());
   memory_tests();
 
   return 0;

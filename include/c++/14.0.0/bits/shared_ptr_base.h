@@ -160,15 +160,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _GLIBCXX26_CONSTEXPR
       void
       _M_add_ref_copy()
-#ifdef __cpp_lib_constexpr_shared_ptr
-      {
-        __builtin_is_constant_evaluated()
-          ? void(_M_use_count++)
-          : __gnu_cxx::__atomic_add_dispatch(&_M_use_count, 1);
-      }
-#else
       { __gnu_cxx::__atomic_add_dispatch(&_M_use_count, 1); }
-#endif
 
       // Increment the use count if it is non-zero, throw otherwise.
       _GLIBCXX26_CONSTEXPR
@@ -207,14 +199,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	// Be race-detector-friendly.  For more info see bits/c++config.
 	_GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(&_M_weak_count);
-#if __cpp_lib_constexpr_shared_ptr
-  if (__builtin_is_constant_evaluated()
-        ? (_M_weak_count-- == 1)
-        : (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count, -1) == 1))
-#else
 	if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count,
 						   -1) == 1)
-#endif
 	  {
 	    _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(&_M_weak_count);
 	    _M_destroy();
@@ -232,15 +218,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _GLIBCXX26_CONSTEXPR
       void
       _M_weak_add_ref() noexcept
-#ifdef __cpp_lib_constexpr_shared_ptr
-      {
-        __builtin_is_constant_evaluated()
-          ? void(_M_weak_count++)
-          : __gnu_cxx::__atomic_add_dispatch(&_M_weak_count, 1);
-      }
-#else
       { __gnu_cxx::__atomic_add_dispatch(&_M_weak_count, 1); }
-#endif
 
       // Decrement the weak count.
       _GLIBCXX26_CONSTEXPR
@@ -249,13 +227,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
         // Be race-detector-friendly. For more info see bits/c++config.
         _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(&_M_weak_count);
-#if __cpp_lib_constexpr_shared_ptr
-	if (__builtin_is_constant_evaluated()
-	 ? (_M_weak_count-- == 1)
-	 : (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count, -1) == 1))
-#else
 	if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count, -1) == 1)
-#endif
 	  {
             _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(&_M_weak_count);
 	    if (_Mutex_base<_Lp>::_S_need_barriers)
@@ -426,13 +398,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
       else
 #endif
-#if __cpp_lib_constexpr_shared_ptr
-      if (__builtin_is_constant_evaluated()
-            ? (_M_use_count-- == 1)
-            : (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1))
-#else
       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1)
-#endif
 	{
 	  _M_release_last_use();
 	}

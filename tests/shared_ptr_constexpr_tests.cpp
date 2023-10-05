@@ -765,6 +765,12 @@ namespace weak_ptr_tests
       b = b && ( !own_less(b1,w2) && !own_less(w2,b1) );
       b = b && (  own_less(w1,w2) ||  own_less(w2,w1) );
       b = b && (  own_less(a1,b1) ||  own_less(b1,a1) );
+      auto own_lessSP = std::owner_less<std::shared_ptr<A>>{};
+      auto own_lessWP = std::owner_less<std::weak_ptr<A>>{};
+      b = b && (  own_lessSP(a1,b1) ||  own_lessSP(b1,a1) );
+      b = b && (  own_lessWP(w1,w2) ||  own_lessWP(w2,w1) );
+      b = b && ( !own_lessSP(b1,w2) && !own_lessSP(w2,b1) );
+      b = b && ( !own_lessWP(b1,w2) && !own_lessWP(w2,b1) );
       std::weak_ptr<B> wB{};
       std::weak_ptr<A> wA{wB};
       std::weak_ptr<A> wA2{std::move(wB)};

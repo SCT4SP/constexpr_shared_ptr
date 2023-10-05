@@ -2301,14 +2301,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Tp, typename _Tp1>
     struct _Sp_owner_less : public binary_function<_Tp, _Tp, bool>
     {
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp& __lhs, const _Tp& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp& __lhs, const _Tp1& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp1& __lhs, const _Tp& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }

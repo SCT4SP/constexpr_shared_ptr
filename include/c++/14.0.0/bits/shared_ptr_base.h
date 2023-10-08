@@ -90,8 +90,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   class bad_weak_ptr : public std::exception
   {
   public:
+    _GLIBCXX26_CONSTEXPR
     virtual char const* what() const noexcept;
 
+    _GLIBCXX26_CONSTEXPR
     virtual ~bad_weak_ptr() noexcept;
   };
 

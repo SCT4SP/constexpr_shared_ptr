@@ -126,6 +126,68 @@ compile-time. Assuming that the runtime implementation need not change, the
 remark quoted above could either be removed, or changed to "Implementations
 should perform no more than one runtime memory allocation."
 
+## Relational Operators
+
+Comparing dynamically allocated pointers within a constant expression
+is legal, provided the result of the comparison is not unspecified.
+Such comparisons are defined in terms of a partial order, applicable to
+pointers which either point "to different elements of the same array, or to
+subobjects thereof"; or to "different non-static data members of the same
+object, or to subobjects of such members, recursively..."; from clause 4
+of [expr.rel]. A simple example program is shown below:
+
+```cpp
+constexpr bool ptr_compare()
+{
+  int* p = new int[2]{};
+  bool b = &p[0] < &p[1];
+  delete [] p;
+  return b;
+}
+
+static_assert(ptr_compare());
+```
+
+It is therefore unsurprising that we include the `std::shared_ptr` relational
+operators within the scope of our proposal to apply `constexpr` to all
+functions within [util.sharedptr]; the `std::shared_ptr` aliasing constructor
+makes this especially simple to configure:
+
+```cpp
+constexpr bool sptr_compare()
+{
+  double *arr = new double[2];
+  std::shared_ptr p{&arr[0]}, q{p, p.get() + 1};
+  return p < q;
+}
+
+static_assert(sptr_compare());
+```
+
+Furthermore, in the interests of `constexpr` consistency, we propose that the
+relational operators of `std::unique_ptr` also now include support for constant
+evaluation. As discussed above, the results of such comparisons are very often
+well defined.
+
+It may be argued that a `std::unique_ptr` which is the sole owner of an array,
+or an object with data members, presents less need for relational operators.
+Yet we must consider that a custom deleter can easily change the semantics; as
+demonstrated in the example below. Lastly, one might note that a
+`std::unique_ptr` should legally be comparable to itself.
+
+```cpp
+constexpr bool uptr_compare()
+{
+  short* p = new short[2]{};
+  auto del = [](short*){};
+  std::unique_ptr<short[]>               a{p+0};
+  std::unique_ptr<short[],decltype(del)> b{p+1, del};
+  return a < b;
+}
+
+static_assert(uptr_compare());
+```
+
 # Impact on the Standard
 
 This proposal is a pure library extension, and does not require any new language features.

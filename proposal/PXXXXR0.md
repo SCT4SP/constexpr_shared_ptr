@@ -19,24 +19,24 @@ toc-depth: 4
 Since the adoption of [@P0784R7] in C++20, constant expressions can include
 dynamic memory allocation; yet support for smart pointers extends only to
 `std::unique_ptr` (since [@P2273R3] in C++23). As at runtime, smart pointers
-can encourage hygienic memory management during constant evaluation; and
-with no remaining technical obstacles, parity between runtime and compile-time
-support for smart pointers can duly and intuitively reflect the increased
+can encourage hygienic memory management during constant evaluation; and with
+no remaining technical obstacles, parity between runtime and compile-time
+support for smart pointers should duly and intuitively reflect the increased
 maturity of language support for constant expression evaluation.  We therefore
-propose that `std::shared_ptr` and associated classes from [util.sharedptr]
+propose that `std::shared_ptr` and associated class templates from [smartptr]
 permit `constexpr` evaluation.
 
 # Motivation and Scope
 
-Two proposals recently adopted for C++23 can facilitate a straightforward
+Two proposals adopted for C++26 and C++23 can facilitate a straightforward
 implementation of comprehensive `constexpr` support for `std::shared_ptr`:
 [@P2738R1] and [@P2448R2]. The former allows the `get_deleter` member function
 to operate, given the type erasure required within the `std::shared_ptr` unary
 class template. The latter can allow even minor associated classes such as
 `std::bad_weak_ptr` to receive `constexpr` qualification, while inheriting from
 the currently non-`constexpr` class: `std::exception`. We furthermore propose
-that the relational operators of `std::unique_ptr`, which can legally operate on
-pointers originating from a single allocation during constant evaluation,
+that the relational operators of `std::unique_ptr`, which can legally operate
+on pointers originating from a single allocation during constant evaluation,
 should also adopt the `constexpr` specifier.
 
 As with C++23 `constexpr` support for `std::unique_ptr`, bumping the value
@@ -172,8 +172,8 @@ well defined.
 It may be argued that a `std::unique_ptr` which is the sole owner of an array,
 or an object with data members, presents less need for relational operators.
 Yet we must consider that a custom deleter can easily change the semantics; as
-demonstrated in the example below. Lastly, one might note that a
-`std::unique_ptr` should legally be comparable to itself.
+demonstrated in the example below. A `std::unique_ptr` should also legally
+comparable with itself.
 
 ```cpp
 constexpr bool uptr_compare()
@@ -193,6 +193,12 @@ static_assert(uptr_compare());
 This proposal is a pure library extension, and does not require any new language features.
 
 # Implementation
+
+An implementation based on the GNU C++ Library (libstdc++) can be found
+[here](https://github.com/SCT4SP/constexpr_shared_ptr). A comprehensive
+test suite is included there within `tests/shared_ptr_constexpr_tests.cpp`;
+alongside a standalone bash script to run it. All tests pass with recent GCC
+and Clang (i.e. versions supporting P2738; `__cpp_constexpr >= 202306L`).
 
 # Proposed Wording
 
@@ -224,6 +230,7 @@ references:
     issued:
       year: 2019
     URL: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0784r7.html
+
   - id: P2738R1
     citation-label: P2738R1
     title: "`constexpr` cast from `void*`: towards `constexpr` type-erasure"
@@ -235,6 +242,7 @@ references:
     issued:
       year: 2023
     URL: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2738r1.pdf
+
   - id: P2448R2
     citation-label: P2448R2
     title: "Relaxing some `constexpr` restrictions"
@@ -244,6 +252,7 @@ references:
     issued:
       year: 2022
     URL: https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2448r2.html
+
   - id: P2273R3
     citation-label: P2273R3
     title: "Making `std::unique_ptr` constexpr"

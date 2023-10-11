@@ -56,6 +56,7 @@ include/c++/14.0.0/bits/allocated_ptr.h
 include/c++/14.0.0/bits/shared_ptr.h
 include/c++/14.0.0/bits/shared_ptr_base.h
 include/c++/14.0.0/bits/stl_function.h
+include/c++/14.0.0/bits/unique_ptr.h
 include/c++/14.0.0/bits/version.h
 include/c++/14.0.0/compare
 include/c++/14.0.0/ext/atomicity.h

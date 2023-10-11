@@ -2420,6 +2420,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct hash<__shared_ptr<_Tp, _Lp>>
     : public __hash_base<size_t, __shared_ptr<_Tp, _Lp>>
     {
+      _GLIBCXX26_CONSTEXPR
       size_t
       operator()(const __shared_ptr<_Tp, _Lp>& __s) const noexcept
       {

@@ -1376,6 +1376,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct hash<shared_ptr<_Tp>>
     : public __hash_base<size_t, shared_ptr<_Tp>>
     {
+      _GLIBCXX26_CONSTEXPR
       size_t
       operator()(const shared_ptr<_Tp>& __s) const noexcept
       {

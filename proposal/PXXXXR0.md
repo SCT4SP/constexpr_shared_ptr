@@ -23,41 +23,42 @@ can encourage hygienic memory management during constant evaluation; and with
 no remaining technical obstacles, parity between runtime and compile-time
 support for smart pointers should duly and intuitively reflect the increased
 maturity of language support for constant expression evaluation.  We therefore
-propose that `std::shared_ptr` and associated class templates from [smartptr]
-permit `constexpr` evaluation.
+propose that `std::shared_ptr` and associated class templates from
+[smartptr]{.sref} permit `constexpr`{.cpp} evaluation.
 
 # Motivation and Scope
 
 Two proposals adopted for C++26 and C++23 can facilitate a straightforward
-implementation of comprehensive `constexpr` support for `std::shared_ptr`:
-[@P2738R1] and [@P2448R2]. The former allows the `get_deleter` member function
-to operate, given the type erasure required within the `std::shared_ptr` unary
-class template. The latter can allow even minor associated classes such as
-`std::bad_weak_ptr` to receive `constexpr` qualification, while inheriting from
-the currently non-`constexpr` class: `std::exception`. We furthermore propose
-that the relational operators of `std::unique_ptr`, which can legally operate
-on pointers originating from a single allocation during constant evaluation,
-should also adopt the `constexpr` specifier.
+implementation of comprehensive `constexpr`{.cpp} support for
+`std::shared_ptr`: [@P2738R1] and [@P2448R2]. The former allows the
+`get_deleter` member function to operate, given the type erasure required
+within the `std::shared_ptr` unary class template. The latter can allow even
+minor associated classes such as `std::bad_weak_ptr` to receive
+`constexpr`{.cpp} qualification, while inheriting from the currently
+non-`constexpr`{.cpp} class: `std::exception`. We furthermore propose that the
+relational operators of `std::unique_ptr`, which can legally operate on
+pointers originating from a single allocation during constant evaluation,
+should also adopt the `constexpr`{.cpp} specifier.
 
-As with C++23 `constexpr` support for `std::unique_ptr`, bumping the value
-`__cpp_lib_constexpr_memory` is our requested feature macro change; yet in the
-discussion and implementation presented here, we adopt the macro
+As with C++23 `constexpr`{.cpp} support for `std::unique_ptr`, bumping the
+value `__cpp_lib_constexpr_memory` is our requested feature macro change; yet
+in the discussion and implementation presented here, we adopt the macro
 `__cpp_lib_constexpr_shared_ptr`. We also use the `_GLIBCXX26_CONSTEXPR` macro
-in place of the literal `constexpr` keyword to ensure the specifier only
+in place of the literal `constexpr`{.cpp} keyword to ensure the specifier only
 applies when the `-std=c++26` flag is enabled.
 
 We below elaborate on points which go beyond the simple addition of the
-`constexpr` specifier to the relevant member functions.
+`constexpr`{.cpp} specifier to the relevant member functions.
 
 ## Atomic Operations
 
 `std::shared_ptr` can operate within a multithreaded runtime environment; and a
 number of its member functions use atomic functions to ensure that shared state
 is updated correctly. Constant expressions must currently be evaluated by a
-single thread. A `constexpr` `std::shared_ptr` implementation can engage with
-the `constexpr`-friendly support for single-threaded evaluation available in
-atomic function definitions within standard library implementations. For
-example, in libstdc++'s interface to atomic functions, the
+single thread. A `constexpr`{.cpp} `std::shared_ptr` implementation can engage
+with the `constexpr`{.cpp}-friendly support for single-threaded evaluation
+available in atomic function definitions within standard library
+implementations. For example, in libstdc++'s interface to atomic functions, the
 `__is_single_threaded` function, which controls execution of both
 `__exchange_and_add_dispatch` and `__atomic_add_dispatch` within the
 `ext/atomicity.h` header file, can be changed to start as follows:
@@ -78,11 +79,11 @@ __is_single_threaded() _GLIBCXX_NOTHROW
 
 Built-in GCC atomic functions such as `__atomic_load_n` are also used within
 libstdc++'s implementation of `std::shared_ptr`. These could similarly be
-updated to account for a `constexpr` single-threaded execution environment
-within the compiler. The approach taken within our own implementation is a
-local one; eliding the call to the atomic function through the predication of
-`std::is_constant_evaluated` (or `if consteval`). For example, here is an
-updated function from `bits/shared_ptr_base.h`, used by
+updated to account for a `constexpr`{.cpp} single-threaded execution
+environment within the compiler. The approach taken within our own
+implementation is a local one; eliding the call to the atomic function through
+the predication of `std::is_constant_evaluated` (or `if consteval`). For
+example, here is an updated function from `bits/shared_ptr_base.h`, used by
 `std::shared_ptr::use_count()` and elsewhere:
 
 ```cpp
@@ -128,13 +129,13 @@ should perform no more than one runtime memory allocation."
 
 ## Relational Operators
 
-Comparing dynamically allocated pointers within a constant expression
-is legal, provided the result of the comparison is not unspecified.
-Such comparisons are defined in terms of a partial order, applicable to
-pointers which either point "to different elements of the same array, or to
-subobjects thereof"; or to "different non-static data members of the same
-object, or to subobjects of such members, recursively..."; from clause 4
-of [expr.rel]. A simple example program is shown below:
+Comparing dynamically allocated pointers within a constant expression is legal,
+provided the result of the comparison is not unspecified.  Such comparisons are
+defined in terms of a partial order, applicable to pointers which either point
+"to different elements of the same array, or to subobjects thereof"; or to
+"different non-static data members of the same object, or to subobjects of such
+members, recursively..."; from clause 4 of [expr.rel]. A simple example program
+is shown below:
 
 ```cpp
 constexpr bool ptr_compare()
@@ -149,7 +150,7 @@ static_assert(ptr_compare());
 ```
 
 It is therefore unsurprising that we include the `std::shared_ptr` relational
-operators within the scope of our proposal to apply `constexpr` to all
+operators within the scope of our proposal to apply `constexpr`{.cpp} to all
 functions within [util.sharedptr]; the `std::shared_ptr` aliasing constructor
 makes this especially simple to configure:
 
@@ -164,10 +165,10 @@ constexpr bool sptr_compare()
 static_assert(sptr_compare());
 ```
 
-Furthermore, in the interests of `constexpr` consistency, we propose that the
-relational operators of `std::unique_ptr` also now include support for constant
-evaluation. As discussed above, the results of such comparisons are very often
-well defined.
+Furthermore, in the interests of `constexpr`{.cpp} consistency, we propose that
+the relational operators of `std::unique_ptr` also now include support for
+constant evaluation. As discussed above, the results of such comparisons are
+very often well defined.
 
 It may be argued that a `std::unique_ptr` which is the sole owner of an array,
 or an object with data members, presents less need for relational operators.
@@ -188,6 +189,22 @@ constexpr bool uptr_compare()
 static_assert(uptr_compare());
 ```
 
+## Maybe Not Now, But Soon
+
+A core message of C++23's [@P2448R2] is that the C++ community is served better
+by including the language version alongside the tuple of possible inputs
+(i.e. function and template arguments) provided to a `constexpr`{.cpp}
+function invocation within a constant expression. Consequently, while there are
+some functions in [smartptr]{.sref} which cannot possibly be so evaluated
+*today*, we propose that these should also be specified with the
+`constexpr`{.cpp} keyword. The following represent the entirety of those
+affected:
+
+  * [util.smartptr.weak.bad]{.sref}: `std::bad_weak_ptr`{.cpp} cannot be constructed as it inherits from a class, `std::exception`, which has no `constexpr` member functions.
+  * [util.smartptr.hash]{.sref}: The `operator()` member of the class template specialisations for `std::hash<std::unique_ptr<T,D>>` and `std::hash<std::shared_ptr<T>>` cannot be defined according to the *Cpp17Hash* requirements ([hash.requirements]{.sref}). (A pointer cannot, during constant evaluation, be converted to an `std::size_t` using `reinterpret_cast`{.cpp}; or otherwise.)
+  * [util.smartptr.owner.hash]{.sref}: The two `operator()` member functions of the recently adopted `owner_hash` class, also cannot be defined according to the *Cpp17Hash* requirements.
+  * [util.smartptr.shared.obs]{.sref}: The recently adopted `owner_hash()` member function of `std::shared_ptr`, also cannot be defined according to the *Cpp17Hash* requirements.
+
 # Impact on the Standard
 
 This proposal is a pure library extension, and does not require any new language features.
@@ -195,8 +212,8 @@ This proposal is a pure library extension, and does not require any new language
 # Implementation
 
 An implementation based on the GNU C++ Library (libstdc++) can be found
-[here](https://github.com/SCT4SP/constexpr_shared_ptr). A comprehensive
-test suite is included there within `tests/shared_ptr_constexpr_tests.cpp`;
+[here](https://github.com/SCT4SP/constexpr_shared_ptr). A comprehensive test
+suite is included there within `tests/shared_ptr_constexpr_tests.cpp`;
 alongside a standalone bash script to run it. All tests pass with recent GCC
 and Clang (i.e. versions supporting P2738; `__cpp_constexpr >= 202306L`).
 
@@ -245,7 +262,7 @@ references:
 
   - id: P2448R2
     citation-label: P2448R2
-    title: "Relaxing some `constexpr` restrictions"
+    title: "Relaxing some `constexpr`{.cpp} restrictions"
     author:
       family: Revzin
       given: Barry

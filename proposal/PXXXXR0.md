@@ -111,13 +111,13 @@ referred to as the *control block*.
 Existing runtime implementations of `make_shared`, `allocate_shared`,
 `make_shared_for_overwrite`, and `allocate_shared_for_overwrite`, allocate
 memory for both the control block, *and* the managed object, from a single
-dynamic memory allocation; via `std::reinterpret_cast`.  This practise aligns
-with a remark at clause 7.1 of [util.smartptr.shared.create] quoted below:
+dynamic memory allocation; via `reinterpret_cast`{.cpp}.  This practise aligns
+with a remark at [util.smartptr.shared.create]{.sref}; quoted below:
 
   - [7.1]{.pnum} Implementations should perform no more than one memory allocation.
   - [*Note 1*: This provides efficiency equivalent to an intrusive smart pointer.  — *end note*]
 
-As `reinterpret_cast` is not permitted within a constant expression, an
+As `reinterpret_cast`{.cpp} is not permitted within a constant expression, an
 alternative approach is required for `make_shared`, `allocate_shared`,
 `make_shared_for_overwrite`, and `allocate_shared_for_overwrite`.  A
 straightforward solution is to create the object first, and pass its address to
@@ -134,8 +134,8 @@ provided the result of the comparison is not unspecified.  Such comparisons are
 defined in terms of a partial order, applicable to pointers which either point
 "to different elements of the same array, or to subobjects thereof"; or to
 "different non-static data members of the same object, or to subobjects of such
-members, recursively..."; from clause 4 of [expr.rel]. A simple example program
-is shown below:
+members, recursively..."; from paragraph 4 of [expr.rel]{.sref}. A simple
+example program is shown below:
 
 ```cpp
 constexpr bool ptr_compare()
@@ -151,8 +151,8 @@ static_assert(ptr_compare());
 
 It is therefore unsurprising that we include the `std::shared_ptr` relational
 operators within the scope of our proposal to apply `constexpr`{.cpp} to all
-functions within [util.sharedptr]; the `std::shared_ptr` aliasing constructor
-makes this especially simple to configure:
+functions within [smartptr]{.sref}; the `std::shared_ptr` aliasing
+constructor makes this especially simple to configure:
 
 ```cpp
 constexpr bool sptr_compare()
@@ -172,9 +172,9 @@ very often well defined.
 
 It may be argued that a `std::unique_ptr` which is the sole owner of an array,
 or an object with data members, presents less need for relational operators.
-Yet we must consider that a custom deleter can easily change the semantics; as
-demonstrated in the example below. A `std::unique_ptr` should also legally
-comparable with itself.
+Yet we must consider that a custom deleter can easily change the operational
+semantics; as demonstrated in the example below. A `std::unique_ptr` should
+also be legally comparable with itself.
 
 ```cpp
 constexpr bool uptr_compare()
@@ -193,12 +193,12 @@ static_assert(uptr_compare());
 
 A core message of C++23's [@P2448R2] is that the C++ community is served better
 by including the language version alongside the tuple of possible inputs
-(i.e. function and template arguments) provided to a `constexpr`{.cpp}
+(i.e. function and template arguments) considered for a `constexpr`{.cpp}
 function invocation within a constant expression. Consequently, while there are
 some functions in [smartptr]{.sref} which cannot possibly be so evaluated
 *today*, we propose that these should also be specified with the
-`constexpr`{.cpp} keyword. The following represent the entirety of those
-affected:
+`constexpr`{.cpp} keyword. The following lists all such functions or
+classes:
 
   * [util.smartptr.weak.bad]{.sref}: `std::bad_weak_ptr`{.cpp} cannot be constructed as it inherits from a class, `std::exception`, which has no `constexpr` member functions.
   * [util.smartptr.hash]{.sref}: The `operator()` member of the class template specialisations for `std::hash<std::unique_ptr<T,D>>` and `std::hash<std::shared_ptr<T>>` cannot be defined according to the *Cpp17Hash* requirements ([hash.requirements]{.sref}). (A pointer cannot, during constant evaluation, be converted to an `std::size_t` using `reinterpret_cast`{.cpp}; or otherwise.)

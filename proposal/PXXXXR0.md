@@ -1,13 +1,11 @@
 ---
 title: "`constexpr std::shared_ptr`"
 document: PXXXXR0
-date: 2023-10-01
+date: 2023-10-20
 audience: Library Evolution Working Group (LEWG)
 author:
-  - name: A B
-    email: <a@b.com>
-  - name: C D
-    email: <c@d.com>
+  - name: Paul Keir
+    email: <graham.keir@gmail.com>
 toc: true
 toc-depth: 4
 ---
@@ -108,24 +106,25 @@ of `std::shared_ptr`s and `std::weak_ptr`s which own or refer to the managed
 object. This information is managed as part of a dynamically allocated object
 referred to as the *control block*.
 
-Existing runtime implementations of `make_shared`, `allocate_shared`,
-`make_shared_for_overwrite`, and `allocate_shared_for_overwrite`, allocate
-memory for both the control block, *and* the managed object, from a single
-dynamic memory allocation; via `reinterpret_cast`{.cpp}.  This practise aligns
-with a remark at [util.smartptr.shared.create]{.sref}; quoted below:
+Existing runtime implementations of `std::make_shared`, `std::allocate_shared`,
+`std::make_shared_for_overwrite`, and `std::allocate_shared_for_overwrite`,
+allocate memory for both the control block, *and* the managed object, from a
+single dynamic memory allocation; via `reinterpret_cast`{.cpp}.  This practise
+aligns with a remark at [util.smartptr.shared.create]{.sref}; quoted below:
 
   - [7.1]{.pnum} Implementations should perform no more than one memory allocation.
   - [*Note 1*: This provides efficiency equivalent to an intrusive smart pointer.  — *end note*]
 
 As `reinterpret_cast`{.cpp} is not permitted within a constant expression, an
-alternative approach is required for `make_shared`, `allocate_shared`,
-`make_shared_for_overwrite`, and `allocate_shared_for_overwrite`.  A
-straightforward solution is to create the object first, and pass its address to
-the appropriate `std::shared_ptr` constructor. Considering the control block,
-this approach amounts to two dynamic memory allocations; albeit at
-compile-time. Assuming that the runtime implementation need not change, the
-remark quoted above could either be removed, or changed to "Implementations
-should perform no more than one runtime memory allocation."
+alternative approach is required for `std::make_shared`,
+`std::allocate_shared`, `std::make_shared_for_overwrite`, and
+`std::allocate_shared_for_overwrite`.  A straightforward solution is to create
+the object first, and pass its address to the appropriate `std::shared_ptr`
+constructor. Considering the control block, this approach amounts to two
+dynamic memory allocations; albeit at compile-time. Assuming that the runtime
+implementation need not change, the remark quoted above could either be
+removed, or changed to "Implementations should perform no more than one runtime
+memory allocation."
 
 ## Relational Operators
 
@@ -166,7 +165,7 @@ static_assert(sptr_compare());
 ```
 
 Furthermore, in the interests of `constexpr`{.cpp} consistency, we propose that
-the relational operators of `std::unique_ptr` also now include support for
+the relational operators of `std::unique_ptr` *also* now include support for
 constant evaluation. As discussed above, the results of such comparisons are
 very often well defined.
 

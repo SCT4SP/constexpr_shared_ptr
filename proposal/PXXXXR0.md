@@ -2,7 +2,7 @@
 title: "`constexpr std::shared_ptr`"
 document: PXXXXR0
 date: 2023-10-20
-audience: Library Evolution Working Group (LEWG)
+audience: SG7 Compile-time programming, LWG Library, LEWG Library Evolution
 author:
   - name: Paul Keir
     email: <graham.keir@gmail.com>

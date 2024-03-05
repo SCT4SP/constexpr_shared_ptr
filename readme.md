@@ -1,7 +1,8 @@
-### `constexpr std::shared_ptr`
+#### `constexpr std::shared_ptr`
 
-#### R1 [https://isocpp.org/files/papers/P3037R1.pdf](https://isocpp.org/files/papers/P3037R1.pdf)
-#### R0 [https://isocpp.org/files/papers/P3037R0.pdf](https://isocpp.org/files/papers/P3037R0.pdf)
+R1 [https://isocpp.org/files/papers/P3037R1.pdf](https://isocpp.org/files/papers/P3037R1.pdf)
+
+R0 [https://isocpp.org/files/papers/P3037R0.pdf](https://isocpp.org/files/papers/P3037R0.pdf)
 
 The default `constexpr` branch contains a `constexpr` implementation of
 `std::shared_ptr` for potential inclusion in C++26. The code is based on the

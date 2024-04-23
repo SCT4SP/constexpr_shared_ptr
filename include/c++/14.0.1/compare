@@ -553,8 +553,8 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	if constexpr (__detail::__3way_builtin_ptr_cmp<_Tp, _Up>)
 	  {
 #if defined(__cpp_lib_constexpr_shared_ptr) && defined(__clang__)
-	    // Workaround until constexpr void pointer comparison is permitted:
-	    // https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#2749
+	    // Workaround until constexpr void pointer comparison is implemented:
+	    // https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2749
 	    if (std::__is_constant_evaluated())
 	    {
 	      // Also, special nullptr handling; as at runtime, and GCC compile-time.

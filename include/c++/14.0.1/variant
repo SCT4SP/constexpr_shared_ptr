@@ -1,6 +1,6 @@
 // <variant> -*- C++ -*-
 
-// Copyright (C) 2016-2023 Free Software Foundation, Inc.
+// Copyright (C) 2016-2024 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -31,6 +31,7 @@
 
 #pragma GCC system_header
 
+#define __glibcxx_want_freestanding_variant
 #define __glibcxx_want_variant
 #include <bits/version.h>
 
@@ -320,6 +321,33 @@ namespace __variant
     __get(_Variant&& __v) noexcept
     { return __variant::__get_n<_Np>(std::forward<_Variant>(__v)._M_u); }
 
+  // Gets the _Uninitialized to construct into for __u.
+  template<size_t _Np, typename _Union>
+    constexpr decltype(auto)
+    __construct_n(_Union& __u) noexcept
+    {
+      if constexpr (_Np == 0)
+	return &__u._M_first;
+      else if constexpr (_Np == 1)
+	{
+	  std::_Construct(&__u._M_rest);
+	  return &__u._M_rest._M_first;
+	}
+      else if constexpr (_Np == 2)
+	{
+	  std::_Construct(&__u._M_rest);
+	  std::_Construct(&__u._M_rest._M_rest);
+	  return &__u._M_rest._M_rest._M_first;
+	}
+      else
+	{
+	  std::_Construct(&__u._M_rest);
+	  std::_Construct(&__u._M_rest._M_rest);
+	  std::_Construct(&__u._M_rest._M_rest._M_rest);
+	  return __variant::__construct_n<_Np - 3>(__u._M_rest._M_rest._M_rest);
+	}
+    }
+
   template<typename... _Types>
     struct _Traits
     {
@@ -364,7 +392,7 @@ namespace __variant
     };
 
   // Defines members and ctors.
-  template<typename... _Types>
+  template<bool __trivially_destructible, typename... _Types>
     union _Variadic_union
     {
       _Variadic_union() = default;
@@ -373,8 +401,8 @@ namespace __variant
 	_Variadic_union(in_place_index_t<_Np>, _Args&&...) = delete;
     };
 
-  template<typename _First, typename... _Rest>
-    union _Variadic_union<_First, _Rest...>
+  template<bool __trivially_destructible, typename _First, typename... _Rest>
+    union _Variadic_union<__trivially_destructible, _First, _Rest...>
     {
       constexpr _Variadic_union() : _M_rest() { }
 
@@ -399,13 +427,12 @@ namespace __variant
       ~_Variadic_union() = default;
 
       constexpr ~_Variadic_union()
-	requires (!__has_trivial_destructor(_First))
-	      || (!__has_trivial_destructor(_Variadic_union<_Rest...>))
+	requires (!__trivially_destructible)
       { }
 #endif
 
       _Uninitialized<_First> _M_first;
-      _Variadic_union<_Rest...> _M_rest;
+      _Variadic_union<__trivially_destructible, _Rest...> _M_rest;
     };
 
   // _Never_valueless_alt is true for variant alternatives that can
@@ -486,7 +513,7 @@ namespace __variant
 	return this->_M_index != __index_type(variant_npos);
       }
 
-      _Variadic_union<_Types...> _M_u;
+      _Variadic_union<false, _Types...> _M_u;
       using __index_type = __select_index<_Types...>;
       __index_type _M_index;
     };
@@ -524,7 +551,7 @@ namespace __variant
 	return this->_M_index != static_cast<__index_type>(variant_npos);
       }
 
-      _Variadic_union<_Types...> _M_u;
+      _Variadic_union<true, _Types...> _M_u;
       using __index_type = __select_index<_Types...>;
       __index_type _M_index;
     };
@@ -536,8 +563,9 @@ namespace __variant
     __emplace(_Variant_storage<_Triv, _Types...>& __v, _Args&&... __args)
     {
       __v._M_reset();
-      auto* __addr = std::__addressof(__variant::__get_n<_Np>(__v._M_u));
-      std::_Construct(__addr, std::forward<_Args>(__args)...);
+      auto* __addr = __variant::__construct_n<_Np>(__v._M_u);
+      std::_Construct(__addr, in_place_index<0>,
+		      std::forward<_Args>(__args)...);
       // Construction didn't throw, so can set the new index now:
       __v._M_index = _Np;
     }
@@ -1386,7 +1414,8 @@ namespace __variant
 
       template<typename _Tp>
 	static constexpr bool __not_in_place_tag
-	  = !__is_in_place_tag<__remove_cvref_t<_Tp>>::value;
+	  = !__is_in_place_type_v<__remove_cvref_t<_Tp>>
+	      && !__is_in_place_index_v<__remove_cvref_t<_Tp>>;
 
     public:
 #if __cpp_concepts

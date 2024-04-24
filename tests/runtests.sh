@@ -10,7 +10,7 @@ ${MYGCC} ${MYGCCFLAGS} shared_ptr_constexpr_tests.cpp && ./a.out
 
 
 # "-L /opt/gcc-latest/lib64" avoids https://github.com/votca/votca/issues/941
-MYCLANG="clang++ -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64"
+MYCLANG="$CLANGOZ_ROOT/bin/clang++ -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64"
 MYCLANGFLAGS="-g -std=c++26 -Winvalid-constexpr -fsanitize=address -I ${MYINCLUDE} -I ${MYINCLUDE}/x86_64-pc-linux-gnu"
 
 echo "Testing with Clang"

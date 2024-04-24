@@ -1059,12 +1059,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     struct _Del {
       constexpr void operator()(const _Ptr __p) {
-        for (size_t __i = 0; __i < _M_n; ++__i)
+        size_t __i = _M_i;
+        while (__i--)
           _Alloc_traits2::destroy(_M_a2, addressof(__p[__i]));
         _Alloc_traits2::deallocate(_M_a2, __p, _M_n);
       };
 
       _Alloc2 _M_a2;
+      const size_t _M_i;
       const size_t _M_n;
     };
 
@@ -1078,11 +1080,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
         _Alloc_traits2::construct(__a2, addressof(__p[__i]),
           std::forward<_Args>(__args)...);
     } catch (...) {
-      _Del{__a2, __i}(__p);
+      _Del{__a2, __i, __n}(__p);
       throw;
     }
 
-    return shared_ptr<_Tp>(__p, _Del{__a2, __n}, __a2);
+    return shared_ptr<_Tp>(__p, _Del{__a2, __i, __n}, __a2);
   }
 #endif
 

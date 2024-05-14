@@ -34,8 +34,8 @@ throughout; in place of a `constexpr` literal.
 One enabler of `constexpr` `shared_ptr` is the implementation of adopted
 proposal P2738 in GCC and Clang; which allows `constexpr` casting from `void*`;
 visible in the `get_deleter` implementation. `constexpr` incompatible atomic
-operations have been avoided, under the asumption that constant expression
-evaluation will be single-threaded (see `_M_add_ref_copy` in
+operations have been avoided, under the assumption that constant expression
+evaluation will be single-threaded (see `_M_get_use_count` in
 `shared_ptr_base.h` for example). Then, the libstdc++ implementation of the
 `std::make_shared*` and `std::allocate_shared*` families were making use of a
 single (untyped) allocation to store both the control block, and the managed

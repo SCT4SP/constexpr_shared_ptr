@@ -8,13 +8,13 @@ The default `constexpr` branch contains a `constexpr` implementation of
 `std::shared_ptr` for potential inclusion in C++26. The code is based on the
 `std::shared_ptr` implementation in GCC's libstdc++; and many of the
 `constexpr` unit tests included here are derived from the libstdc++ testsuite.
-The implementation here is presented as a modification of a pre-installed set
+The implementation is presented as a modification of a pre-installed set
 of libstdc++ header files; and the `include` directory provided here can
 potentially be used, along with a recent version of GCC (installed here at
 `/opt/gcc-latest/`), or Clang, via:
 
 ```
-$CXX -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64 -std=c++26 -Winvalid-constexpr -fsanitize=address -I $PWD/include/c++/14.0.1 -I $PWD/include/c++/14.0.1/x86_64-pc-linux-gnu main.cpp
+$ $CXX -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64 -std=c++26 -Winvalid-constexpr -fsanitize=address -I $PWD/include/c++/14.0.1 -I $PWD/include/c++/14.0.1/x86_64-pc-linux-gnu main.cpp
 ```
 
 Most of the changes required for this implementation are within two files:
@@ -57,7 +57,7 @@ The following `git` command shows the files which differ between the
 unmodified `include` directory, obtained after install of a recent GCC build.
 
 ```
-git diff --name-only master constexpr -- include
+$ git diff --name-only master constexpr -- include
 include/c++/14.0.1/bits/allocated_ptr.h
 include/c++/14.0.1/bits/shared_ptr.h
 include/c++/14.0.1/bits/shared_ptr_base.h

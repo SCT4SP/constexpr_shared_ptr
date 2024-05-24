@@ -1,5 +1,7 @@
 #### `constexpr std::shared_ptr`
 
+R2 [https://isocpp.org/files/papers/P3037R2.pdf](https://isocpp.org/files/papers/P3037R2.pdf)
+
 R1 [https://isocpp.org/files/papers/P3037R1.pdf](https://isocpp.org/files/papers/P3037R1.pdf)
 
 R0 [https://isocpp.org/files/papers/P3037R0.pdf](https://isocpp.org/files/papers/P3037R0.pdf)

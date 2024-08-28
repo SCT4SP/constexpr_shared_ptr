@@ -26,10 +26,10 @@
 #ifndef _GLIBCXX_TESTSUITE_ALLOCATOR_H
 #define _GLIBCXX_TESTSUITE_ALLOCATOR_H
 
-#include <bits/move.h>
-#include <ext/pointer.h>
-#include <ext/alloc_traits.h>
-// #include <testsuite_hooks.h>
+//#include <bits/move.h>
+//#include <ext/pointer.h>
+//#include <ext/alloc_traits.h>
+//#include <testsuite_hooks.h>
 #if __cplusplus >= 201703L
 # include <memory_resource>
 # include <new>
@@ -605,6 +605,10 @@ namespace __gnu_test
     };
 
 #if __cplusplus >= 201103L
+
+// Removed to avoid dependency on GCC-internal types from ext/pointer.h:
+// i.e. __gnu_cxx::_Std_pointer_impl and __gnu_cxx::_Pointer_adapter
+#if 0
   template<typename Tp>
     class CustomPointerAlloc : public std::allocator<Tp>
     {
@@ -632,6 +636,7 @@ namespace __gnu_test
       void deallocate(pointer p, std::size_t n)
       { std::allocator<Tp>::deallocate(std::addressof(*p), n); }
     };
+#endif
 
   // A class type meeting *only* the Cpp17NullablePointer requirements.
   // Can be used as a base class for fancy pointers (like PointerBase, below)

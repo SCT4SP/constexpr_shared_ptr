@@ -65,9 +65,11 @@ unmodified `include` directory, obtained after install of a recent GCC build.
 ```
 $ git diff --name-only master constexpr -- include
 include/c++/14.0.1/bits/allocated_ptr.h
+include/c++/14.0.1/bits/exception.h
 include/c++/14.0.1/bits/shared_ptr.h
 include/c++/14.0.1/bits/shared_ptr_base.h
 include/c++/14.0.1/bits/stl_function.h
+include/c++/14.0.1/bits/unicode.h
 include/c++/14.0.1/bits/unique_ptr.h
 include/c++/14.0.1/bits/version.h
 include/c++/14.0.1/compare

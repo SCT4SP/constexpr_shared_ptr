@@ -59,17 +59,24 @@ namespace std _GLIBCXX_VISIBILITY(default)
   class exception
   {
   public:
+    _GLIBCXX26_CONSTEXPR
     exception() _GLIBCXX_NOTHROW { }
+    _GLIBCXX26_CONSTEXPR
     virtual ~exception() _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW;
 #if __cplusplus >= 201103L
+    _GLIBCXX26_CONSTEXPR
     exception(const exception&) = default;
+    _GLIBCXX26_CONSTEXPR
     exception& operator=(const exception&) = default;
+    _GLIBCXX26_CONSTEXPR
     exception(exception&&) = default;
+    _GLIBCXX26_CONSTEXPR
     exception& operator=(exception&&) = default;
 #endif
 
     /** Returns a C-style character string describing the general cause
      *  of the current error.  */
+    _GLIBCXX26_CONSTEXPR
     virtual const char*
     what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW;
   };
@@ -78,6 +85,21 @@ namespace std _GLIBCXX_VISIBILITY(default)
 
 } // namespace std
 
+}
+
+// From libsupc++/eh_exception.cc with additional constexpr
+
+_GLIBCXX26_CONSTEXPR
+std::exception::~exception() _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_USE_NOEXCEPT { }
+
+_GLIBCXX26_CONSTEXPR
+const char*
+std::exception::what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_USE_NOEXCEPT
+{
+  // NB: Another elegant option would be returning typeid(*this).name()
+  // and not overriding what() in bad_exception, bad_alloc, etc.  In
+  // that case, however, mangled names would be returned, PR 14493.
+  return "std::exception";
 }
 
 #endif

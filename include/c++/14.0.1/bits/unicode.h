@@ -804,7 +804,7 @@ inline namespace __v15_1_0
 	operator++(int)
 	{
 	  auto __tmp = *this;
-	  ++this;
+	  ++*this;
 	  return __tmp;
 	}
 

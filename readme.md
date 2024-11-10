@@ -1,5 +1,7 @@
 #### `constexpr std::shared_ptr`
 
+R4 [https://isocpp.org/files/papers/P3037R4.pdf](https://isocpp.org/files/papers/P3037R4.pdf)
+
 R3 [https://isocpp.org/files/papers/P3037R3.pdf](https://isocpp.org/files/papers/P3037R3.pdf)
 
 R2 [https://isocpp.org/files/papers/P3037R2.pdf](https://isocpp.org/files/papers/P3037R2.pdf)
@@ -63,9 +65,11 @@ unmodified `include` directory, obtained after install of a recent GCC build.
 ```
 $ git diff --name-only master constexpr -- include
 include/c++/14.0.1/bits/allocated_ptr.h
+include/c++/14.0.1/bits/exception.h
 include/c++/14.0.1/bits/shared_ptr.h
 include/c++/14.0.1/bits/shared_ptr_base.h
 include/c++/14.0.1/bits/stl_function.h
+include/c++/14.0.1/bits/unicode.h
 include/c++/14.0.1/bits/unique_ptr.h
 include/c++/14.0.1/bits/version.h
 include/c++/14.0.1/compare

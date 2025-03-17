@@ -14,6 +14,7 @@
 \usepackage{changepage}
 \usepackage{nameref}
 \usepackage{enumitem}
+\usepackage{pdfpages} % includepdf
 
 % Solarized colour scheme for listings
 \definecolor{solarized@base03}{HTML}{002B36}
@@ -91,6 +92,8 @@
 \newcommand{\fullref}[1]{\ref{#1} \nameref{#1}}
 
 \newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
+\newcommand*{\upstreamcommit}{2a74dc7}
+\newcommand*{\forkcommit}{fa9cf47}
 
 \date{}
 \title{\texttt{constexpr std::shared\_ptr} and everything else in \wgxxi{smartptr}}
@@ -109,7 +112,7 @@
 \begin{flushright}
   \begin{tabular}{ll}
   Document \#:&P3037R5\\
-  Date:       &\date{2025-02-23}\\
+  Date:       &\date{2025-03-17}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -128,7 +131,7 @@
 \section{Revision History}
 
 \begin{itemize}
-\item R4 2025-02-23
+\item R5 2025-03-17
   \begin{itemize}
   \item Lengthened proposal title for clarity based on LEWG feedback in Hagenberg
   \item Added full context for wording changes (Section \ref{sec:wording})
@@ -424,17 +427,25 @@ is also available: on Github
 \section{Proposed Wording}
 \label{sec:wording}
 
-The following wording changes apply to \wgxxi{N4981} and can also be viewed on
-Github via a fork of the \emph{C++ Standard Draft Sources} repository
-\href{https://github.com/cplusplus/draft/compare/805aac8...pkeir:draft:c5ec068}{here}.
+The following wording changes apply to \wgxxi{N4981} and can also
+be viewed on Github via a fork of the \emph{C++ Standard Draft Sources}
+repository
+\href{https://github.com/cplusplus/draft/compare/\upstreamcommit...pkeir:draft:\forkcommit}{here}.
+
+Pages from the \emph{C++ Standard Draft Sources} which include wording changes
+proposed here are also provided on the following pages; with changes
+highlighted.
+
+% As includepdf loses the highlighting/strikeout annotations
+% pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
+% https://askubuntu.com/a/18691
+\includepdf[pages=-]{std-diff.pdf}
 
 \section{Acknowledgements}
 
 Thanks to all of the following:
 
   - (In alphabetical order by last name.) Peter Dimov, Thiago Macieira, Arthur O'Dwyer, Jonathan Wakely and everyone else who contributed to the BSI Panel, SG7, LEWG, and online forum discussions.
-
-\pagebreak
 
 \section{References}
 \renewcommand{\section}[2]{}%

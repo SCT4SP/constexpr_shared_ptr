@@ -1,6 +1,6 @@
 // Input streams -*- C++ -*-
 
-// Copyright (C) 1997-2024 Free Software Foundation, Inc.
+// Copyright (C) 1997-2025 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -33,7 +33,9 @@
 #ifndef _GLIBCXX_ISTREAM
 #define _GLIBCXX_ISTREAM 1
 
+#ifdef _GLIBCXX_SYSHDR
 #pragma GCC system_header
+#endif
 
 #include <bits/requires_hosted.h> // iostreams
 
@@ -57,7 +59,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  derived from basic_streambuf to do the actual input.
   */
   template<typename _CharT, typename _Traits>
-    class basic_istream : public basic_ostream<_CharT, _Traits>
+    class basic_istream : virtual public basic_ios<_CharT, _Traits>
     {
     public:
       // Types (inherited from basic_ios (27.4.4)):
@@ -71,7 +73,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       typedef basic_streambuf<_CharT, _Traits> 		__streambuf_type;
       typedef basic_ios<_CharT, _Traits>		__ios_type;
       typedef basic_istream<_CharT, _Traits>		__istream_type;
-      typedef basic_ostream<_CharT, _Traits>		__ostream_type;
       typedef num_get<_CharT, istreambuf_iterator<_CharT, _Traits> >
  							__num_get_type;
       typedef ctype<_CharT>	      			__ctype_type;
@@ -94,7 +95,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       */
       explicit
       basic_istream(__streambuf_type* __sb)
-      : __ostream_type(__sb), _M_gcount(streamsize(0))
+      : _M_gcount(streamsize(0))
       { this->init(__sb); }
 
       /**
@@ -194,6 +195,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return _M_extract(__n); }
 
 #ifdef _GLIBCXX_USE_LONG_LONG
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wlong-long"
       __istream_type&
       operator>>(long long& __n)
       { return _M_extract(__n); }
@@ -201,6 +204,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __istream_type&
       operator>>(unsigned long long& __n)
       { return _M_extract(__n); }
+#pragma GCC diagnostic pop
 #endif
       ///@}
 
@@ -702,7 +706,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       basic_istream(const basic_istream&) = delete;
 
       basic_istream(basic_istream&& __rhs)
-      : __ostream_type(), _M_gcount(streamsize(0))
+      : __ios_type(), _M_gcount(__rhs._M_gcount)
       {
 	__ios_type::move(__rhs);
 	__rhs._M_gcount = 0;
@@ -722,7 +726,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       void
       swap(basic_istream& __rhs)
       {
-	__ostream_type::swap(__rhs);
+	__ios_type::swap(__rhs);
 	std::swap(_M_gcount, __rhs._M_gcount);
       }
 #endif
@@ -910,7 +914,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  __n /= sizeof(_CharT);
 	  streamsize __w = __in.width();
 	  std::__istream_extract(__in, __s, __n);
-	  if (__in.good() && (__w <= 0 || __n < __w))
+	  if (__in.good() && (__w <= 0 || __n < (size_t)__w))
 	    {
 	      // Stopped extracting early to avoid overflowing the buffer,
 	      // but might have stopped anyway (and set eofbit) if at EOF.
@@ -979,7 +983,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   */
   template<typename _CharT, typename _Traits>
     class basic_iostream
-    : public basic_istream<_CharT, _Traits>
+    : public basic_istream<_CharT, _Traits>,
+      public basic_ostream<_CharT, _Traits>
     {
     public:
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
@@ -1003,7 +1008,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       */
       explicit
       basic_iostream(basic_streambuf<_CharT, _Traits>* __sb)
-      : __istream_type(__sb) { }
+      : __istream_type(__sb), __ostream_type(__sb) { }
 
       /**
        *  @brief  Destructor does nothing.
@@ -1013,13 +1018,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     protected:
       basic_iostream()
-      : __istream_type() { }
+      : __istream_type(), __ostream_type() { }
 
 #if __cplusplus >= 201103L
       basic_iostream(const basic_iostream&) = delete;
 
       basic_iostream(basic_iostream&& __rhs)
-      : __istream_type(std::move(__rhs))
+      : __istream_type(std::move(__rhs)), __ostream_type(*this)
       { }
 
       // 27.7.3.3 Assign/swap
@@ -1069,7 +1074,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // 2328. Rvalue stream extraction should use perfect forwarding
   // 1203. More useful rvalue stream insertion
 
-#if __cpp_concepts >= 201907L
+#if __cpp_concepts >= 201907L && __glibcxx_type_trait_variable_templates
   template<typename _Is, typename _Tp>
     requires __derived_from_ios_base<_Is>
       && requires (_Is& __is, _Tp&& __t) { __is >> std::forward<_Tp>(__t); }

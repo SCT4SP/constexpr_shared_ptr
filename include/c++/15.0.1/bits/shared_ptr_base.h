@@ -356,6 +356,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     _Sp_counted_base<_S_atomic>::_M_release() noexcept
     {
       _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(&_M_use_count);
+#if ! __cpp_lib_constexpr_shared_ptr
 #if ! _GLIBCXX_TSAN
       constexpr bool __lock_free
 	= __atomic_always_lock_free(sizeof(long long), 0)
@@ -394,6 +395,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    }
 	}
       else
+#endif
 #endif
       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1)
 	{

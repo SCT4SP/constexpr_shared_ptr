@@ -1061,7 +1061,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	      typename _Sp_cd_type::__allocator_type __a2(__a);
 	      auto __guard = std::__allocate_guarded(__a2);
 	      _Sp_cd_type* __mem = __guard.get();
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
         if (__builtin_is_constant_evaluated())
           std::construct_at(__mem, __p, std::move(__d), std::move(__a));
         else

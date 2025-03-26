@@ -71,7 +71,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     operator<<(std::basic_ostream<_Ch, _Tr>& __os,
 	       const __shared_ptr<_Tp, _Lp>& __p)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
         return __os;
 #endif
@@ -100,7 +100,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     get_deleter(const shared_ptr<_Tp>& __p) noexcept
     {
 #if __cpp_rtti
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       // P2738 allows constexpr casting from void* ... but not one targeting 0
       void* __del = __p._M_get_deleter(typeid(_Del));
       return __del ? static_cast<_Del*>(__del) : nullptr;
@@ -1046,7 +1046,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// @relates shared_ptr @{
 
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
   template<typename _Tp, typename _Alloc, typename... _Args>
   constexpr auto
   cest_allocate_shared(const _Alloc& __a, size_t __n, _Args&&... __args)
@@ -1104,7 +1104,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_NonArray<_Tp>>
     allocate_shared(const _Alloc& __a, _Args&&... __args)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, 1,
@@ -1130,7 +1130,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       using _Alloc = allocator<void>;
       _Alloc __a;
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, 1,
@@ -1163,7 +1163,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_UnboundedArray<_Tp>>
     allocate_shared(const _Alloc& __a, size_t __n)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, __n);
@@ -1178,7 +1178,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared(size_t __n)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n);
@@ -1194,7 +1194,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     allocate_shared(const _Alloc& __a, size_t __n,
 		    const remove_extent_t<_Tp>& __u)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, __n, __u);
@@ -1210,7 +1210,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared(size_t __n, const remove_extent_t<_Tp>& __u)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n, __u);
@@ -1238,7 +1238,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_BoundedArray<_Tp>>
     allocate_shared(const _Alloc& __a)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, extent_v<_Tp>);
@@ -1253,7 +1253,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_BoundedArray<_Tp>>
     make_shared()
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, extent_v<_Tp>);
@@ -1268,7 +1268,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_BoundedArray<_Tp>>
     allocate_shared(const _Alloc& __a, const remove_extent_t<_Tp>& __u)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, extent_v<_Tp>, __u);
@@ -1284,7 +1284,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_BoundedArray<_Tp>>
     make_shared(const remove_extent_t<_Tp>& __u)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, extent_v<_Tp>, __u);
@@ -1301,7 +1301,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_NotUnboundedArray<_Tp>>
     allocate_shared_for_overwrite(const _Alloc& __a)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         constexpr size_t __n = is_array_v<_Tp> ? extent_v<_Tp> : 1;
@@ -1327,7 +1327,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_NotUnboundedArray<_Tp>>
     make_shared_for_overwrite()
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         constexpr size_t __n = is_array_v<_Tp> ? extent_v<_Tp> : 1;
@@ -1350,7 +1350,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_UnboundedArray<_Tp>>
     allocate_shared_for_overwrite(const _Alloc& __a, size_t __n)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(__a, __n);
@@ -1366,7 +1366,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared_for_overwrite(size_t __n)
     {
-#if __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (__builtin_is_constant_evaluated())
       {
         return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n);

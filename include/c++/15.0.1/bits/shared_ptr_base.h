@@ -275,10 +275,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+#if defined(__clang__) && defined(__cpp_lib_constexpr_shared_ptr)
+    // This specialisation should not be constexpr, but Clang has an issue:
+    // https://github.com/llvm/llvm-project/issues/62888
+    _GLIBCXX26_CONSTEXPR
+#endif
     inline bool
     _Sp_counted_base<_S_mutex>::
     _M_add_ref_lock_nothrow() noexcept
     {
+#if defined(__clang__) && defined(__cpp_lib_constexpr_shared_ptr)
+      if consteval
+      {
+        if (_M_use_count)
+          __glibcxx_assert(false);
+        else
+          __glibcxx_assert(false);
+        return false;
+      }
+      else
+      {
+#endif
       __gnu_cxx::__scoped_lock sentry(*this);
       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1) == 0)
 	{
@@ -286,6 +303,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return false;
 	}
       return true;
+#if defined(__clang__) && defined(__cpp_lib_constexpr_shared_ptr)
+      }
+#endif
     }
 
   template<>
@@ -356,7 +376,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     _Sp_counted_base<_S_atomic>::_M_release() noexcept
     {
       _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(&_M_use_count);
-#if ! __cpp_lib_constexpr_shared_ptr
+#if !defined( __cpp_lib_constexpr_shared_ptr)
 #if ! _GLIBCXX_TSAN
       constexpr bool __lock_free
 	= __atomic_always_lock_free(sizeof(long long), 0)

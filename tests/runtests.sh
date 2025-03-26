@@ -6,9 +6,8 @@ MYINCLUDE="../include/c++/15.0.1"
 MYGCC="/opt/gcc-latest/bin/g++ -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH""
 MYGCC_FLAGS="-g -std=c++26 -Winvalid-constexpr -fsanitize=address -static-libasan -I ${MYINCLUDE} -I ${MYINCLUDE}/x86_64-pc-linux-gnu"
 
-echo "Not (FOR NOW) Testing with GCC"
-#echo "Testing with GCC"
-#${MYGCC} ${MYGCC_FLAGS} shared_ptr_constexpr_tests.cpp && ./a.out
+echo "Testing with GCC"
+${MYGCC} ${MYGCC_FLAGS} shared_ptr_constexpr_tests.cpp && ./a.out
 
 
 # "-L /opt/gcc-latest/lib64" avoids https://github.com/votca/votca/issues/941

@@ -95,7 +95,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   };
 
   // Substitute for bad_weak_ptr object in the case of -fno-exceptions.
-  _GLIBCXX26_CONSTEXPR
   inline void
   __throw_bad_weak_ptr()
   { _GLIBCXX_THROW_OR_ABORT(bad_weak_ptr()); }
@@ -276,7 +275,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
-    _GLIBCXX26_CONSTEXPR
     inline bool
     _Sp_counted_base<_S_mutex>::
     _M_add_ref_lock_nothrow() noexcept
@@ -1463,6 +1461,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   template<typename _Tp>
     [[__gnu__::__always_inline__]]
+    _GLIBCXX26_CONSTEXPR
     inline _Tp*
     __shared_ptr_deref(_Tp* __p)
     {

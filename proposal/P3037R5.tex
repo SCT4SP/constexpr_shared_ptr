@@ -92,11 +92,11 @@
 \newcommand{\fullref}[1]{\ref{#1} \nameref{#1}}
 
 \newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
-\newcommand*{\upstreamcommit}{2a74dc7}
-\newcommand*{\forkcommit}{fa9cf47}
+\newcommand*{\upstreamcommit}{4dd513d}
+\newcommand*{\forkcommit}{4b5d3cf}
 
 \date{}
-\title{\texttt{constexpr std::shared\_ptr} and everything else in \wgxxi{smartptr}}
+\title{\texttt{constexpr std::shared\_ptr} and friends}
 
 \newcommand{\emailaddressP}{paul.keir@uws.ac.uk}
 \newcommand{\emailaddressH}{cpp@hanicka.net}
@@ -112,7 +112,7 @@
 \begin{flushright}
   \begin{tabular}{ll}
   Document \#:&P3037R5\\
-  Date:       &\date{2025-03-17}\\
+  Date:       &\date{2025-03-27}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -131,9 +131,10 @@
 \section{Revision History}
 
 \begin{itemize}
-\item R5 2025-03-17
+\item R5 2025-03-27
   \begin{itemize}
-  \item Lengthened proposal title for clarity based on LEWG feedback in Hagenberg
+  \item Changed proposal title for clarity based on LEWG feedback in Hagenberg
+  \item Included support for partial specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr}
   \item Added full context for wording changes (Section \ref{sec:wording})
   \end{itemize}
 \item R4 2024-10-21
@@ -176,8 +177,8 @@ pointers can encourage hygienic memory management during constant evaluation;
 and with no remaining technical obstacles, parity between runtime and
 compile-time support for smart pointers should reflect the increased maturity
 of language support for constant expression evaluation.  We therefore propose
-that \texttt{std::shared\_ptr} and appropriate class template member functions
-from \wgxxi{smartptr} permit \texttt{constexpr} evaluation.
+that \texttt{std::shared\_ptr} and appropriate classes and template member
+functions from \wgxxi{smartptr} permit \texttt{constexpr} evaluation.
 
 \section{Motivation and Scope}
 
@@ -192,7 +193,7 @@ ensures memory is properly deallocated upon the \texttt{buffer}'s destruction,
 according to its owner status. This is a common approach for runtime code, and
 a \texttt{constexpr std::shared\_ptr} class implementation helpfully bypasses
 thoughts of raw pointers and preprocessor macros. The impact of adding
-\texttt{constexpr} functionality to the SYCL implementation is therefore
+\texttt{constexpr} functionality to the implementation is thus
 minimised.
 
 \begin{lstlisting}[language=cpp]
@@ -231,13 +232,25 @@ We below elaborate on points which go beyond the simple addition of the
 
 The existing \texttt{std::shared\_ptr} class can operate within a multithreaded
 runtime environment. A number of its member functions may therefore be defined
-using atomic functions; so ensuring that shared state is updated correctly.
-Atomic functions are not qualified as \texttt{constexpr}; but as constant
-expressions must be evaluated by a single thread, a \texttt{constexpr}
-\texttt{std::shared\_ptr} implementation can safely skip calls to atomic
-functions through the predication of \texttt{std::is\_constant\_evaluated} (or
-\texttt{if consteval}). For example, here is a modified function from GCC's
-libstdc++, called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
+using atomic functions; so ensuring that shared state is updated correctly. In
+earlier revisions of this paper, standard atomic functions were not qualified
+as \texttt{constexpr}. Yet \texttt{constexpr} implementations of
+\wgxxi{smartptr} classes and functions could be implemented, through
+recognising that as constant expressions must be evaluated by a single thread,
+execution can safely skip calls to atomic functions through the
+predication of \texttt{std::is\_constant\_evaluated} (or \texttt{if
+consteval}). For example, here is a modified function from GCC's libstdc++,
+called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
+
+%The existing \texttt{std::shared\_ptr} class can operate within a multithreaded
+%runtime environment. A number of its member functions may therefore be defined
+%using atomic functions; so ensuring that shared state is updated correctly.
+%Atomic functions are not qualified as \texttt{constexpr}; but as constant
+%expressions must be evaluated by a single thread, a \texttt{constexpr}
+%\texttt{std::shared\_ptr} implementation can safely skip calls to atomic
+%functions through the predication of \texttt{std::is\_constant\_evaluated} (or
+%\texttt{if consteval}). For example, here is a modified function from GCC's
+%libstdc++, called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
 
 \begin{lstlisting}[language=cpp]
 constexpr long
@@ -253,33 +266,19 @@ _M_get_use_count() const noexcept
 }
 \end{lstlisting}
 
-The use of atomic intrinsics within Clang's libc++ and MSVC's STL can be elided
-similarly. In \texttt{\_\_memory/shared\_ptr.h}, libc++ makes calls to the
-atomic intrinsic \texttt{\_\_atomic\_load\_n}, only via the inline C++
-functions \texttt{\_\_libcpp\_relaxed\_load} and
-\texttt{\_\_libcpp\_acquire\_load}; while \texttt{\_\_atomic\_add\_fetch} is
-accessed only via \texttt{\_\_libcpp\_atomic\_refcount\_increment} and
-\texttt{\_\_libcpp\_atomic\_refcount\_decrement}. Each of these four functions
-is comprised only of return statement pairs, predicated upon \emph{object-like}
-macros including \texttt{\_LIBCPP\_HAS\_NO\_THREADS}; and so could easily be
-modified to involve \texttt{std::is\_constant\_evaluated} as above.
-
-In \texttt{stl/inc/memory}, the \texttt{std::shared\_ptr} of MSVC's STL
-inherits a \texttt{\_Ref\_count\_base} member through \texttt{\_Ptr\_base}.
-\texttt{\_Ref\_count\_base} has two \texttt{\_Atomic\_counter\_t} members
-(aliases of \texttt{unsigned long}), updated atomically using the
-\texttt{\_InterlockedCompareExchange}; \texttt{\_InterlockedIncrement} (via the
-macro \texttt{\_MT\_INCR}); or \texttt{\_InterlockedDecrement} (via the macro
-\texttt{\_MT\_DECR}) atomic intrinsics. All the (five) functions invoking these
-intrinsics can again make use of \texttt{std::is\_constant\_evaluated} to avoid
-the atomic operations.
-
-Adding \texttt{constexpr} support to an implementation of
-\texttt{std::shared\_ptr} utilising \texttt{std::atomic} would need to take an
-alternative approach; likely involving the modification of its
-\texttt{std::atomic} definition. Recently, \cite{P3309R3} has proposed adding
-such \texttt{constexpr} functionality to \texttt{std::atomic} (and
-\texttt{std::atomic\_ref}) for C++26.
+Today, the adoption of \cite{P3309R3} has enabled
+\texttt{constexpr} functionality in \texttt{std::atomic} (and
+\texttt{std::atomic\_ref}) for C++26; and so code such as that above will soon
+be unnecessary. Yet support for the partial specialisations of
+\texttt{std::atomic} for \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr}
+were not included in \cite{P3309R3}. During discussions on that paper, it was
+proposed that \texttt{atomic<shared\_ptr>} should be supported in
+\texttt{constexpr} whenever \texttt{shared\_ptr} is supported in
+\texttt{constexpr} (whichever paper lands second should have this change). We
+consequent here (the second paper) propose \texttt{constexpr} support for the
+partial specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr}
+and \texttt{std::weak\_ptr}, as specified in
+\wgxxi{util.smartptr.atomic.shared} and \wgxxi{util.smartptr.atomic.weak}.
 
 \subsection{Two Memory Allocations}
 
@@ -290,7 +289,8 @@ which own or refer to the managed object. This information is managed as part
 of a dynamically allocated object referred to as the \emph{control block}.
 
 Existing runtime implementations of \texttt{std::make\_shared},
-\texttt{std::allocate\_shared}, \texttt{std::make\_shared\_for\_overwrite}, and
+\texttt{std::allocate\_shared}, \linebreak
+\texttt{std::make\_shared\_for\_overwrite}, and
 \texttt{std::allocate\_shared\_for\_overwrite}, allocate memory for both the
 control block, \emph{and} the managed object, from a single dynamic memory
 allocation; via \texttt{reinterpret\_cast}.  This practise aligns with a remark
@@ -301,14 +301,14 @@ at \wgxxi{util.smartptr.shared.create}; quoted below:
 
 As \texttt{reinterpret\_cast} is not permitted within a constant expression, an
 alternative approach is required for \texttt{std::make\_shared},
-\texttt{std::allocate\_shared}, \texttt{std::make\_shared\_for\_overwrite}, and
-\texttt{std::allocate\_shared\_for\_overwrite}.  A straightforward solution is
-to create the object first, and pass its address to the appropriate
-\texttt{std::shared\_ptr} constructor. Considering the control block, this
-approach amounts to two dynamic memory allocations; albeit at compile-time.
-Assuming that the runtime implementation need not change, the remark quoted
-above can be left unchanged; as this is only a recommendation, not a
-requirement.
+\texttt{std::allocate\_shared}, \texttt{std::make\_shared\_for\_overwrite},
+and \linebreak \texttt{std::allocate\_shared\_for\_overwrite}.  A
+straightforward solution is to create the object first, and pass its address to
+the appropriate \texttt{std::shared\_ptr} constructor. Considering the control
+block, this approach amounts to two dynamic memory allocations; albeit at
+compile-time. Assuming that the runtime implementation need not change, the
+remark quoted above can be left unchanged; as this is only a recommendation,
+not a requirement.
 
 \subsection{Relational Operators}
 
@@ -384,7 +384,7 @@ instance the C++ community will be served better by a future update; when their
 constant evaluation becomes possible.
 
 \begin{itemize}
-  \item \wgxxi{util.smartptr.hash}: The \texttt{operator()} member of the class template specialisations for \texttt{std::hash<std::unique\_ptr<T,D>>} and \texttt{std::hash<std::shared\_ptr<T>>} cannot be defined according to the \emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}). (A pointer cannot, during constant evaluation, be converted to an \texttt{std::size\_t} using \texttt{reinterpret\_cast}; or otherwise.)
+  \item \wgxxi{util.smartptr.hash}: The \texttt{operator()} member of the class template specialisations for \linebreak \texttt{std::hash<std::unique\_ptr<T,D>>} and \texttt{std::hash<std::shared\_ptr<T>>} cannot be defined according to the \emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}). (A pointer cannot, during constant evaluation, be converted to an \texttt{std::size\_t} using \texttt{reinterpret\_cast}; or otherwise.)
 
   \item \wgxxi{util.smartptr.owner.hash}: The two \texttt{operator()} member functions of the recently adopted \texttt{owner\_hash} class, also cannot be defined according to the \emph{Cpp17Hash} requirements.
 
@@ -411,15 +411,15 @@ language features.
 
 \section{Implementation}
 
-An implementation based on the GNU C++ Library (libstdc++) can be found
-\href{https://github.com/SCT4SP/constexpr_shared_ptr}{here}. A comprehensive
-test suite is included there within
+An implementation by the first author, based on the GNU C++ Library (libstdc++)
+can be found \href{https://github.com/SCT4SP/constexpr_shared_ptr}{here}. A
+comprehensive test suite is included there within
 \texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
 script to run it. All tests pass with recent GCC and Clang (i.e. versions
 supporting \cite{P2738R1}; \texttt{\_\_cpp\_constexpr >= 202306L}).
 
-A second implementation, by Hana Dusíková, based on the ``libc++'' C++ Library
-is also available: on Github
+A second implementation, by the second author, based on the ``libc++'' C++
+Library is also available: on Github
 \href{https://github.com/hanickadot/llvm-project/tree/P3309-constexpr-atomic-and-atomic-ref}{here}
 (via commit 23217d0); and with a corresponding Compiler Explorer instance
 \href{https://compiler-explorer.com/z/8cj7nc1no}{here}.
@@ -439,6 +439,8 @@ highlighted.
 % As includepdf loses the highlighting/strikeout annotations
 % pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
 % https://askubuntu.com/a/18691
+% Yes, this is using std-diff.pdf *twice*; the first time below ensures
+% contents page numbers are correct.
 \includepdf[pages=-]{std-diff.pdf}
 
 \section{Acknowledgements}

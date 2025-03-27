@@ -1,0 +1,493 @@
+\documentclass[10pt]{article}
+
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{fullpage}
+\usepackage[colorlinks, allcolors=blue]{hyperref}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{courier}
+\usepackage[T1]{fontenc}
+% \usepackage{libertine}%% Only as example for the romans/sans fonts
+\usepackage[scaled=0.85]{beramono}
+\usepackage{changepage}
+\usepackage{nameref}
+\usepackage{enumitem}
+\usepackage{pdfpages} % includepdf
+
+% Solarized colour scheme for listings
+\definecolor{solarized@base03}{HTML}{002B36}
+\definecolor{solarized@base02}{HTML}{073642}
+\definecolor{solarized@base01}{HTML}{586e75}
+\definecolor{solarized@base00}{HTML}{657b83}
+\definecolor{solarized@base0}{HTML}{839496}
+\definecolor{solarized@base1}{HTML}{93a1a1}
+\definecolor{solarized@base2}{HTML}{EEE8D5}
+\definecolor{solarized@base3}{HTML}{FDF6E3}
+\definecolor{solarized@yellow}{HTML}{B58900}
+\definecolor{solarized@orange}{HTML}{CB4B16}
+\definecolor{solarized@red}{HTML}{DC322F}
+\definecolor{solarized@magenta}{HTML}{D33682}
+\definecolor{solarized@violet}{HTML}{6C71C4}
+\definecolor{solarized@blue}{HTML}{268BD2}
+\definecolor{solarized@cyan}{HTML}{2AA198}
+\definecolor{solarized@green}{HTML}{859900}
+
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+}
+
+% Define C++ syntax highlighting colour scheme
+\lstdefinelanguage{cpp}{
+  language=C++,
+  basicstyle=\footnotesize\ttfamily,
+  numbers=left,
+  numberstyle=\footnotesize,
+  tabsize=2,
+  breaklines=true,
+  escapeinside={@}{@},
+  numberstyle=\tiny\color{solarized@base01},
+  keywordstyle=\color{solarized@green},
+  stringstyle=\color{solarized@cyan}\ttfamily,
+  identifierstyle=\color{solarized@blue},
+  commentstyle=\color{solarized@base01},
+  emphstyle=\color{solarized@red},
+  frame=single,
+  rulecolor=\color{solarized@base2},
+  rulesepcolor=\color{solarized@base2},
+  showstringspaces=false,
+}
+
+\lstdefinelanguage{diff}{
+  morecomment=[f][\color{blue}]{@@},           % group identifier
+  morecomment=[f][\color{red}]{-},             % deleted lines
+  morecomment=[f][\color{green!50!black}]{+},  % added lines
+  morecomment=[f][\color{magenta}]{---},       % diff header lines
+  morecomment=[f][\color{magenta}]{+++},
+}
+
+\lstdefinelanguage{plus}{
+  basicstyle=\footnotesize\ttfamily\color{green!50!black},
+  emph={see,below,TypeSwitch,unspecified},
+  emphstyle=\itshape
+}
+
+\lstdefinelanguage{signature}{
+  basicstyle=\ttfamily\color{green!50!black},
+  emph={see,below,TypeSwitch,unspecified},
+  emphstyle=\itshape
+}
+
+\newcommand{\desc}[1]{\textit{#1}}
+\newcommand{\requires}{\desc{Requires}}
+\newcommand{\effects}{\desc{Effects}}
+\newcommand{\precondition}{\desc{Precondition}}
+\newcommand{\postcondition}{\desc{Postcondition}}
+\newcommand{\throws}{\desc{Throws}}
+\newcommand{\returns}{\desc{Returns}}
+\newcommand{\remarks}{\desc{Remarks}}
+\newcommand{\exceptionsafety}{\desc{Exception Safety}}
+
+\newcommand{\fullref}[1]{\ref{#1} \nameref{#1}}
+
+\newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
+\newcommand*{\upstreamcommit}{4dd513d}
+\newcommand*{\forkcommit}{4b5d3cf}
+
+\date{}
+\title{\texttt{constexpr std::shared\_ptr} and friends}
+
+\newcommand{\emailaddressP}{paul.keir@uws.ac.uk}
+\newcommand{\emailaddressH}{cpp@hanicka.net}
+\newcommand{\emailP}{\href{mailto:\emailaddressP}{\emailaddressP}}
+\newcommand{\emailH}{\href{mailto:\emailaddressH}{\emailaddressH}}
+
+\begin{document}
+
+\setlist{nosep} % No extra spaces between itemize list entries
+
+\maketitle\vspace{-2cm}
+
+\begin{flushright}
+  \begin{tabular}{ll}
+  Document \#:&P3037R5\\
+  Date:       &\date{2025-03-27}\\
+  Project:    &Programming Language C++\\
+  Audience:   &Library Working Group (LWG)\\
+  Reply-to:   &\author{Paul Keir}\\
+              &\textless\emailP\textgreater\\
+              &\author{Hana Dusíková}\\
+              &\textless\emailH\textgreater
+  \end{tabular}
+\end{flushright}
+
+{\hypersetup{linkcolor=black}
+  \tableofcontents
+}
+
+\pagebreak
+
+\section{Revision History}
+
+\begin{itemize}
+\item R5 2025-03-27
+  \begin{itemize}
+  \item Changed proposal title for clarity based on LEWG feedback in Hagenberg
+  \item Included support for partial specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr}
+  \item Added full context for wording changes (Section \ref{sec:wording})
+  \end{itemize}
+\item R4 2024-10-21
+  \begin{itemize}
+  \item Added \texttt{constexpr} qualifier to the wording
+        for \texttt{std::bad\_weak\_ptr} with \cite{P3068R6}
+  \item Updated ClangOz reference in motivation
+  \end{itemize}
+\item R3 2024-09-03
+  \begin{itemize}
+  \item Removed \texttt{constexpr} specification from
+        \texttt{reinterpret\_pointer\_cast} (Section \ref{sec:mnnbs})
+  \item Added references to \cite{P3309R3} and \cite{P3068R6}
+  \item Added details of a second implementation based on libc++
+  \end{itemize}
+\item R2 2024-05-24
+  \begin{itemize}
+  \item Added wording
+  \item Removed \texttt{constexpr} specification from some
+        functions (Section \ref{sec:mnnbs})
+  \item Removed SG7 from Audience (post 2024 Spring meeting in Tokyo)
+  \end{itemize}
+\item R1 2024-03-05
+  \begin{itemize}
+  \item Added a motivating example
+  \item Included libc++ \& MSVC STL in atomic operation considerations
+  \end{itemize}
+\item R0 2023-11-06
+  \begin{itemize}
+  \item Original Proposal
+  \end{itemize}
+\end{itemize}
+
+\section{Introduction}
+
+Since the adoption of \cite{P0784R7} in C++20, constant expressions can include
+dynamic memory allocation; yet support for smart pointers extends only to
+\texttt{std::unique\_ptr} (since \cite{P2273R3} in C++23). As at runtime, smart
+pointers can encourage hygienic memory management during constant evaluation;
+and with no remaining technical obstacles, parity between runtime and
+compile-time support for smart pointers should reflect the increased maturity
+of language support for constant expression evaluation.  We therefore propose
+that \texttt{std::shared\_ptr} and appropriate classes and template member
+functions from \wgxxi{smartptr} permit \texttt{constexpr} evaluation.
+
+\section{Motivation and Scope}
+
+It is convenient when the same C++ code can be deployed both at runtime and
+compile time. Our recent project investigates performance scaling of
+\emph{parallel} constant expression evaluation in an experimental Clang
+compiler \cite{ClangOz}. As well as C++17 parallel algorithms, a prototype
+\texttt{constexpr} implementation of the Khronos SYCL API was utilised, where a
+SYCL \texttt{buffer} class abstracts over device and/or host memory. In the
+simplified code excerpt below, the \texttt{std::shared\_ptr} data member
+ensures memory is properly deallocated upon the \texttt{buffer}'s destruction,
+according to its owner status. This is a common approach for runtime code, and
+a \texttt{constexpr std::shared\_ptr} class implementation helpfully bypasses
+thoughts of raw pointers and preprocessor macros. The impact of adding
+\texttt{constexpr} functionality to the implementation is thus
+minimised.
+
+\begin{lstlisting}[language=cpp]
+template <class T, int dims = 1>
+struct buffer
+{
+  constexpr buffer(const range<dims> &r)
+    : range_{ r }, data_{ new T[r.size()], [this](auto* p){ delete [] p; } } { }
+
+  constexpr buffer(T* hostData, const range<dims>& r)
+    : range_{ r }, data_{ hostData, [](auto){} } { }
+
+  const range<dims> range_{};
+  std::shared_ptr<T[]> data_{};
+};
+\end{lstlisting}
+
+Adopted C++26 proposal \cite{P2738R1} facilitates a straightforward
+implementation of comprehensive \texttt{constexpr} support for
+\texttt{std::shared\_ptr}, allowing the \texttt{get\_deleter} member function
+to operate, given the type erasure required within the
+\texttt{std::shared\_ptr} unary class template. We furthermore propose that the
+relational operators of \texttt{std::unique\_ptr}, which can legally operate on
+pointers originating from a single allocation during constant evaluation,
+should also adopt the \texttt{constexpr} specifier.
+
+As with C++23 \texttt{constexpr} support for \texttt{std::unique\_ptr}, bumping
+the value \texttt{\_\_cpp\_lib\_constexpr\_memory} is our requested feature
+macro change; yet in the discussion and implementation presented here, we adopt
+the macro \texttt{\_\_cpp\_lib\_constexpr\_shared\_ptr}.
+
+We below elaborate on points which go beyond the simple addition of the
+\texttt{constexpr} specifier to the relevant member functions.
+
+\subsection{Atomic Operations}
+
+The existing \texttt{std::shared\_ptr} class can operate within a multithreaded
+runtime environment. A number of its member functions may therefore be defined
+using atomic functions; so ensuring that shared state is updated correctly. In
+earlier revisions of this paper, standard atomic functions were not qualified
+as \texttt{constexpr}. Yet \texttt{constexpr} implementations of
+\wgxxi{smartptr} classes and functions could be implemented, through
+recognising that as constant expressions must be evaluated by a single thread,
+execution can safely skip calls to atomic functions through the
+predication of \texttt{std::is\_constant\_evaluated} (or \texttt{if
+consteval}). For example, here is a modified function from GCC's libstdc++,
+called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
+
+%The existing \texttt{std::shared\_ptr} class can operate within a multithreaded
+%runtime environment. A number of its member functions may therefore be defined
+%using atomic functions; so ensuring that shared state is updated correctly.
+%Atomic functions are not qualified as \texttt{constexpr}; but as constant
+%expressions must be evaluated by a single thread, a \texttt{constexpr}
+%\texttt{std::shared\_ptr} implementation can safely skip calls to atomic
+%functions through the predication of \texttt{std::is\_constant\_evaluated} (or
+%\texttt{if consteval}). For example, here is a modified function from GCC's
+%libstdc++, called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
+
+\begin{lstlisting}[language=cpp]
+constexpr long
+_M_get_use_count() const noexcept
+{
+#ifdef __cpp_lib_constexpr_shared_ptr
+  return std::is_constant_evaluated()
+           ? _M_use_count
+           : __atomic_load_n(&_M_use_count, __ATOMIC_RELAXED);
+#else
+  return __atomic_load_n(&_M_use_count, __ATOMIC_RELAXED);
+#endif
+}
+\end{lstlisting}
+
+Today, the adoption of \cite{P3309R3} has enabled
+\texttt{constexpr} functionality in \texttt{std::atomic} (and
+\texttt{std::atomic\_ref}) for C++26; and so code such as that above will soon
+be unnecessary. Yet support for the partial specialisations of
+\texttt{std::atomic} for \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr}
+were not included in \cite{P3309R3}. During discussions on that paper, it was
+proposed that \texttt{atomic<shared\_ptr>} should be supported in
+\texttt{constexpr} whenever \texttt{shared\_ptr} is supported in
+\texttt{constexpr} (whichever paper lands second should have this change). We
+consequent here (the second paper) propose \texttt{constexpr} support for the
+partial specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr}
+and \texttt{std::weak\_ptr}, as specified in
+\wgxxi{util.smartptr.atomic.shared} and \wgxxi{util.smartptr.atomic.weak}.
+
+\subsection{Two Memory Allocations}
+
+Unlike \texttt{std::unique\_ptr}, a \texttt{std::shared\_ptr} must store not
+only the managed object, but also the type-erased deleter and allocator, as
+well as the number of \texttt{std::shared\_ptr}s and \texttt{std::weak\_ptr}s
+which own or refer to the managed object. This information is managed as part
+of a dynamically allocated object referred to as the \emph{control block}.
+
+Existing runtime implementations of \texttt{std::make\_shared},
+\texttt{std::allocate\_shared}, \linebreak
+\texttt{std::make\_shared\_for\_overwrite}, and
+\texttt{std::allocate\_shared\_for\_overwrite}, allocate memory for both the
+control block, \emph{and} the managed object, from a single dynamic memory
+allocation; via \texttt{reinterpret\_cast}.  This practise aligns with a remark
+at \wgxxi{util.smartptr.shared.create}; quoted below:
+
+\makebox[0pt][r]{(7.1)\quad} - Implementations should perform no more than one memory allocation.\newline
+\makebox[0pt][r]{\quad} \phantom{-} [\emph{Note 1}: This provides efficiency equivalent to an intrusive smart pointer.  - \emph{end note}]
+
+As \texttt{reinterpret\_cast} is not permitted within a constant expression, an
+alternative approach is required for \texttt{std::make\_shared},
+\texttt{std::allocate\_shared}, \texttt{std::make\_shared\_for\_overwrite},
+and \linebreak \texttt{std::allocate\_shared\_for\_overwrite}.  A
+straightforward solution is to create the object first, and pass its address to
+the appropriate \texttt{std::shared\_ptr} constructor. Considering the control
+block, this approach amounts to two dynamic memory allocations; albeit at
+compile-time. Assuming that the runtime implementation need not change, the
+remark quoted above can be left unchanged; as this is only a recommendation,
+not a requirement.
+
+\subsection{Relational Operators}
+
+Comparing dynamically allocated pointers within a constant expression is legal,
+provided the result of the comparison is not unspecified.  Such comparisons are
+defined in terms of a partial order, applicable to pointers which either point
+\emph{``to different elements of the same array, or to subobjects
+thereof...''}; or to \emph{``different non-static data members of the same
+object, or to subobjects of such members, recursively...''}; from paragraph 4
+of \wgxxi{expr.rel}. A simple example program is shown below:
+
+\begin{lstlisting}[language=cpp]
+constexpr bool ptr_compare()
+{
+  int* p = new int[2]{};
+  bool b = &p[0] < &p[1];
+  delete [] p;
+  return b;
+}
+
+static_assert(ptr_compare());
+\end{lstlisting}
+
+It is therefore unsurprising that we include the \texttt{std::shared\_ptr}
+relational operators within the scope of our proposal to apply
+\texttt{constexpr} to all functions within \wgxxi{smartptr}; the
+\texttt{std::shared\_ptr} aliasing constructor makes this especially simple to
+configure:
+
+\begin{lstlisting}[language=cpp]
+constexpr bool sptr_compare()
+{
+  double *arr = new double[2];
+  std::shared_ptr p{&arr[0]}, q{p, p.get() + 1};
+  return p < q;
+}
+
+static_assert(sptr_compare());
+\end{lstlisting}
+
+Furthermore, in the interests of \texttt{constexpr} consistency, we propose
+that the relational operators of \texttt{std::unique\_ptr} \emph{also} now
+include support for constant evaluation. As discussed above, the results of
+such comparisons are very often well defined.
+
+It may be argued that a \texttt{std::unique\_ptr} which is the sole owner of an
+array, or an object with data members, presents less need for relational
+operators. Yet we must consider that a custom deleter can easily change the
+operational semantics; as demonstrated in the example below. A
+\texttt{std::unique\_ptr} should also be legally comparable with itself.
+
+\begin{lstlisting}[language=cpp]
+constexpr bool uptr_compare()
+{
+  short* p = new short[2]{};
+  auto del = [](short*){};
+  std::unique_ptr<short[]>               a{p+0};
+  std::unique_ptr<short[],decltype(del)> b{p+1, del};
+  return a < b;
+}
+
+static_assert(uptr_compare());
+\end{lstlisting}
+
+\subsection{Maybe Not Now, But Soon}
+\label{sec:mnnbs}
+
+The functions from \wgxxi{smartptr} listed below cannot possibly be evaluated
+within a constant expression. We \emph{do not} propose that their
+specifications should change. While C++23's \cite{P2448R2} allows such
+functions to be annotated as \texttt{constexpr}, we suggest that in this
+instance the C++ community will be served better by a future update; when their
+constant evaluation becomes possible.
+
+\begin{itemize}
+  \item \wgxxi{util.smartptr.hash}: The \texttt{operator()} member of the class template specialisations for \linebreak \texttt{std::hash<std::unique\_ptr<T,D>>} and \texttt{std::hash<std::shared\_ptr<T>>} cannot be defined according to the \emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}). (A pointer cannot, during constant evaluation, be converted to an \texttt{std::size\_t} using \texttt{reinterpret\_cast}; or otherwise.)
+
+  \item \wgxxi{util.smartptr.owner.hash}: The two \texttt{operator()} member functions of the recently adopted \texttt{owner\_hash} class, also cannot be defined according to the \emph{Cpp17Hash} requirements.
+
+  \item \wgxxi{util.smartptr.shared.obs}: The recently adopted \texttt{owner\_hash()} member function of \texttt{std::shared\_ptr}, also cannot be defined according to the \emph{Cpp17Hash} requirements.
+
+  \item \wgxxi{util.smartptr.weak.obs}: The recently adopted \texttt{owner\_hash()} member function of \texttt{std::weak\_ptr}, also cannot be defined according to the \emph{Cpp17Hash} requirements.
+
+  \item \wgxxi{util.smartptr.shared.cast}: Neither of the two \texttt{reinterpret\_pointer\_cast} overloads can be included as their implementations will typically call \texttt{reinterpret\_cast}, which is prohibited here.
+
+\end{itemize}
+
+We also \emph{do not} propose any specification change for the overloads of
+\texttt{operator<<} for \texttt{std::shared\_ptr} and
+\texttt{std::unique\_ptr}, from \wgxxi{util.smartptr.shared.io} and
+\wgxxi{unique.ptr.io}. Unlike the functions above, a \texttt{constexpr}
+implementation for the overloads could today use a vendor-specific extension;
+do nothing; or simply report an error. But such possibilities should be
+discussed in a separate proposal focused on I/O.
+
+\section{Impact on the Standard}
+
+This proposal is a pure library extension, and does not require any new
+language features.
+
+\section{Implementation}
+
+An implementation by the first author, based on the GNU C++ Library (libstdc++)
+can be found \href{https://github.com/SCT4SP/constexpr_shared_ptr}{here}. A
+comprehensive test suite is included there within
+\texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
+script to run it. All tests pass with recent GCC and Clang (i.e. versions
+supporting \cite{P2738R1}; \texttt{\_\_cpp\_constexpr >= 202306L}).
+
+A second implementation, by the second author, based on the ``libc++'' C++
+Library is also available: on Github
+\href{https://github.com/hanickadot/llvm-project/tree/P3309-constexpr-atomic-and-atomic-ref}{here}
+(via commit 23217d0); and with a corresponding Compiler Explorer instance
+\href{https://compiler-explorer.com/z/8cj7nc1no}{here}.
+
+\section{Proposed Wording}
+\label{sec:wording}
+
+The following wording changes apply to \wgxxi{N4981} and can also
+be viewed on Github via a fork of the \emph{C++ Standard Draft Sources}
+repository
+\href{https://github.com/cplusplus/draft/compare/\upstreamcommit...pkeir:draft:\forkcommit}{here}.
+
+Pages from the \emph{C++ Standard Draft Sources} which include wording changes
+proposed here are also provided on the following pages; with changes
+highlighted.
+
+% As includepdf loses the highlighting/strikeout annotations
+% pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
+% https://askubuntu.com/a/18691
+% Yes, this is using std-diff.pdf *twice*; the first time below ensures
+% contents page numbers are correct.
+\includepdf[pages=-]{std-diff.pdf}
+
+\section{Acknowledgements}
+
+Thanks to all of the following:
+
+  - (In alphabetical order by last name.) Peter Dimov, Thiago Macieira, Arthur O'Dwyer, Jonathan Wakely and everyone else who contributed to the BSI Panel, SG7, LEWG, and online forum discussions.
+
+\section{References}
+\renewcommand{\section}[2]{}%
+\begin{thebibliography}{9}
+
+  \bibitem[P0784R7]{P0784R7}
+    Peter Dimov, Louis Dionne, Nina Ranns, Richard Smith, Daveed Vandevoorde,
+    \emph{More constexpr containers} (2019)\newline
+    \url{https://wg21.link/P0784R7}
+
+  \bibitem[P2738R1]{P2738R1}
+    Corentin Jabot, David Ledger,
+    \emph{\texttt{constexpr} cast from \texttt{void*}: towards \texttt{constexpr} type-erasure} (2023)\newline
+    \url{https://wg21.link/P2738R1}
+
+  \bibitem[P2448R2]{P2448R2}
+    Barry Revzin,
+    \emph{Relaxing some \texttt{constexpr} restrictions} (2022)\newline
+    \url{https://wg21.link/P2448R2}
+
+  \bibitem[P2273R3]{P2273R3}
+    Andreas Fertig,
+    \emph{Making \texttt{std::unique\_ptr} constexpr} (2021)\newline
+    \url{https://wg21.link/P2273R3}
+
+  \bibitem[P3309R3]{P3309R3}
+    Hana Dusíková,
+    \emph{constexpr atomic<T> and atomic\_ref<T>} (2024)\newline
+    \url{https://wg21.link/P3309R3}
+
+  \bibitem[P3068R6]{P3068R6}
+    Hana Dusíková,
+    \emph{Allowing exception throwing in constant-evaluation} (2024)\newline
+    \url{https://wg21.link/P3068R6}
+
+  \bibitem[ClangOz]{ClangOz}
+    Paul Keir, Andrew Gozillon,
+    \emph{ClangOz: Parallel constant evaluation of C++ map and reduce operations} (2024)\newline
+    \url{https://doi.org/10.1016/j.cola.2024.101298}
+
+\end{thebibliography}
+
+\end{document}

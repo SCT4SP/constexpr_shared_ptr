@@ -1,5 +1,6 @@
 #include <cassert>
 #include <memory>
+#include <atomic>
 #include <iostream>
 #include <tuple>
 #define VERIFY assert
@@ -910,11 +911,42 @@ void memory_tests()
   static_assert(bad_weak_ptr_tests::run());
 }
 
+constexpr
+bool atomic_tests_basic()
+{
+  std::atomic_int ai0;
+  std::atomic_int ai1{0};
+  std::atomic<int> ai2{0};
+  bool b = ai1 == ai2;
+  ai1++; ai1++; ai2--;
+  ai0 = 42;
+  b = b && ai1 != ai2 && ai1 == 2 && ai2 == -1 && ai0 == 42;
+
+  ai0.store(43);
+  int i = ai0.load();
+  b = b && i == 43;
+
+  std::atomic_flag af{false};
+  b = b && false == af.test_and_set();
+  b = b && true == af.test();
+  af.clear();
+  b = b && false == af.test();
+
+  return b;
+}
+
+void atomic_tests()
+{
+  assert(atomic_tests_basic());
+  static_assert(atomic_tests_basic());
+}
+
 int main(int argc, char *argv[])
 {
   static_assert(__cpp_lib_constexpr_shared_ptr);
   static_assert(__gnu_cxx::__is_single_threaded());
   memory_tests();
+  atomic_tests();
 
   return 0;
 }

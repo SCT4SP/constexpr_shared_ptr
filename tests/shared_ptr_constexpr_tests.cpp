@@ -941,12 +941,42 @@ void atomic_tests()
   static_assert(atomic_tests_basic());
 }
 
+constexpr
+bool inout_tests_basic()
+{
+  auto del = [](int* p) { delete p; };
+
+  {
+    std::unique_ptr<int, decltype(del)> up;
+    int **pp = std::out_ptr(up);
+  }
+
+  {
+    std::shared_ptr<int> sp;
+    int **pp = std::out_ptr(sp, del);
+  }
+
+  {
+    std::unique_ptr<int, decltype(del)> up{new int{42}};
+    int **pp = std::inout_ptr(up);
+  }
+
+  return true;
+}
+
+void inout_tests()
+{
+  assert(inout_tests_basic());
+  static_assert(inout_tests_basic());
+}
+
 int main(int argc, char *argv[])
 {
   static_assert(__cpp_lib_constexpr_shared_ptr);
   static_assert(__gnu_cxx::__is_single_threaded());
   memory_tests();
   atomic_tests();
+  inout_tests();
 
   return 0;
 }

@@ -63,6 +63,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
     public:
+      _GLIBCXX26_CONSTEXPR
       explicit
       out_ptr_t(_Smart& __smart, _Args... __args)
       : _M_impl{__smart, std::forward<_Args>(__args)...}
@@ -73,8 +74,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       out_ptr_t(const out_ptr_t&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       ~out_ptr_t() = default;
 
+      _GLIBCXX26_CONSTEXPR
       operator _Pointer*() const noexcept
       { return _M_impl._M_get(); }
 
@@ -183,11 +186,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       template<typename _Tp, typename _Del>
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer>
-	{
+	{  
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  { _M_smart.reset(); }
 
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
@@ -232,6 +237,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<shared_ptr<_Tp>,
 		     typename shared_ptr<_Tp>::element_type*, _Del, _Alloc>
 	{
+	  _GLIBCXX26_CONSTEXPR
 	  _Impl(_Smart& __s, _Del __d, _Alloc __a = _Alloc())
 	  : _M_smart(__s)
 	  {
@@ -248,10 +254,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    _M_smart._M_refcount._M_pi = __mem;
 	  }
 
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_ptr); }
 
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
 	    auto& __pi = _M_smart._M_refcount._M_pi;
@@ -305,6 +313,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
     public:
+      _GLIBCXX26_CONSTEXPR
       explicit
       inout_ptr_t(_Smart& __smart, _Args... __args)
       : _M_impl{__smart, std::forward<_Args>(__args)...}
@@ -317,6 +326,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       ~inout_ptr_t() = default;
 
+      _GLIBCXX26_CONSTEXPR
       operator _Pointer*() const noexcept
       { return _M_impl._M_get(); }
 
@@ -402,6 +412,7 @@ namespace __detail
    * @headerfile <memory>
    */
   template<typename _Pointer = void, typename _Smart, typename... _Args>
+    _GLIBCXX26_CONSTEXPR
     inline auto
     out_ptr(_Smart& __s, _Args&&... __args)
     {
@@ -423,6 +434,7 @@ namespace __detail
    * @headerfile <memory>
    */
   template<typename _Pointer = void, typename _Smart, typename... _Args>
+    _GLIBCXX26_CONSTEXPR
     inline auto
     inout_ptr(_Smart& __s, _Args&&... __args)
     {

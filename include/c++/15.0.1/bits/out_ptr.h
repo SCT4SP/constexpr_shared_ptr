@@ -135,14 +135,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       template<typename _Tp>
 	struct _Impl<_Tp*, _Tp*>
 	{
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  { _M_p = nullptr; }
 
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
 	  { }
 
+	  _GLIBCXX26_CONSTEXPR
 	  _Tp**
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Tp*&>(_M_p)); }

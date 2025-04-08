@@ -948,11 +948,21 @@ bool inout_tests_basic()
   auto del = [](int* p) { delete p; };
 
   {
-    int* p = nullptr;
-    auto f = [&](int **pp) { b = b && p == *pp; *pp = new int{7}; };
+    int i = 6;
+    int* p = &i;
+    auto f = [&](int **pp) {
+      b = b && p == *pp && nullptr == *pp;
+      *pp = new int{7};
+    };
     f(std::out_ptr(p));
     b = b && 7 == *p;
-    auto g = [&](int **pp) { b = b && p == *pp; delete *pp; *pp = new int{8}; };
+    delete p;
+
+    p = &i;
+    auto g = [&](int **pp) {
+      b = b && p == *pp && 6 == **pp;
+      *pp = new int{8};
+    };
     g(std::inout_ptr(p));
     b = b && 8 == *p;
     delete p;
@@ -962,14 +972,14 @@ bool inout_tests_basic()
     std::unique_ptr<int, decltype(del)> up;
     auto f = [&](int **pp) { b = b && up.get() == *pp; *pp = new int{42}; };
     f(std::out_ptr(up));
-    b = b && up.get();
+    b = b && 42 == *up;
   }
 
   {
     std::shared_ptr<int> sp;
     auto f = [&](int **pp) { b = b && sp.get() == *pp; *pp = new int{42}; };
     f(std::out_ptr(sp, del));
-    b = b && sp.get();
+    b = b && 42 == *sp;
   }
 
   {
@@ -977,10 +987,10 @@ bool inout_tests_basic()
     auto f = [&](int **pp) {
       b = b && up.get() == *pp;
       delete *pp;
-      *pp = new int{42};
+      *pp = new int{43};
     };
-    f(std::inout_ptr(up));
-    b = b && up.get();
+    f(std::inout_ptr(up, del));
+    b = b && 43 == *up;
   }
 
   return b;

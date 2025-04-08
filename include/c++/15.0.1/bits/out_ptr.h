@@ -96,11 +96,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // This constructor must not modify __s because out_ptr_t and
 	  // inout_ptr_t want to do different things. After construction
 	  // they call _M_out_init() or _M_inout_init() respectively.
+	  _GLIBCXX26_CONSTEXPR
 	  _Impl(_Smart& __s, _Args&&... __args)
 	  : _M_smart(__s), _M_args(std::forward<_Args>(__args)...)
 	  { }
 
 	  // Called by out_ptr_t to clear the smart pointer before using it.
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  {
@@ -119,11 +121,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  { _M_ptr = _M_smart.release(); }
 
 	  // The pointer value returned by operator Pointer*().
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Pointer&>(_M_ptr)); }
 
 	  // Finalize the effects on the smart pointer.
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl() noexcept(false);
 
 	  _Smart& _M_smart;
@@ -214,10 +218,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_out_init()
 	  { _M_smart.reset(); }
 
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
 	    if (_M_smart.get())
@@ -452,6 +458,7 @@ namespace __detail
   /// @cond undocumented
   template<typename _Smart, typename _Pointer, typename... _Args>
   template<typename _Smart2, typename _Pointer2, typename... _Args2>
+    _GLIBCXX26_CONSTEXPR
     inline
     out_ptr_t<_Smart, _Pointer, _Args...>::
     _Impl<_Smart2, _Pointer2, _Args2...>::~_Impl()

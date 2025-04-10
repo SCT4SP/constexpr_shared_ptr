@@ -85,7 +85,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	if (false) // DEBUG !__builtin_is_constant_evaluated())
+#ifndef __cpp_lib_constexpr_shared_ptr
+	_Pointer* __p = *this;
+	return static_cast<void**>(static_cast<void*>(__p));
+#else
+	if (!__builtin_is_constant_evaluated())
 	{
 	  _Pointer* __p = *this;
 	  return static_cast<void**>(static_cast<void*>(__p));
@@ -94,6 +98,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  return _M_impl._M_getv();
 	}
+#endif
       }
 
     private:
@@ -104,13 +109,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // This constructor must not modify __s because out_ptr_t and
 	  // inout_ptr_t want to do different things. After construction
 	  // they call _M_out_init() or _M_inout_init() respectively.
-	  _GLIBCXX26_CONSTEXPR
 	  _Impl(_Smart& __s, _Args&&... __args)
 	  : _M_smart(__s), _M_args(std::forward<_Args>(__args)...)
 	  { }
 
 	  // Called by out_ptr_t to clear the smart pointer before using it.
-	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  {
@@ -129,13 +132,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  { _M_ptr = _M_smart.release(); }
 
 	  // The pointer value returned by operator Pointer*().
-	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Pointer&>(_M_ptr)); }
 
 	  // Finalize the effects on the smart pointer.
-	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl() noexcept(false);
 
 	  _Smart& _M_smart;
@@ -150,18 +151,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  { _M_p = nullptr; _M_pv = nullptr; _M_p_orig = nullptr; }
+#else
+	  { _M_p = nullptr; }
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  { _M_pv = _M_p; _M_p_orig = _M_p; }
+#else
+	  { }
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Tp**
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Tp*&>(_M_p)); }
 
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -173,10 +183,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    if (_M_pv != _M_p_orig)
 	      _M_p = static_cast<_Tp*>(_M_pv);
 	  }
+#endif
 
 	  _Tp*& _M_p;
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
 	  const _Tp* _M_p_orig;
+#endif
 	};
 
       // Partial specialization for raw pointers, with conversion.
@@ -219,13 +232,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
+#else
+	  { _M_smart.reset();}
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -237,10 +255,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    if (_M_pv != _M_p_orig)
 	      _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
 	  }
+#endif
 
 	  _Smart& _M_smart;
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
 	  const _Tp* _M_p_orig;
+#endif
 	};
 
       // Partial specialization for std::unique_ptr with replacement deleter.
@@ -250,6 +271,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer, _Del2>
 	{
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
 	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2 __d)
 	  : _M_smart(__s), _M_del(__d)
@@ -257,16 +279,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    _M_pv     = _M_smart._M_t._M_ptr();
 	    _M_p_orig = _M_smart._M_t._M_ptr();
 	  }
+#endif
 
 	  void
 	  _M_out_init()
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
+#else
+	  { _M_smart.reset(); }
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -281,11 +309,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    if (_M_smart.get())
 	      _M_smart._M_t._M_deleter() = std::forward<_Del2>(_M_del);
 	  }
+#endif
 
 	  _Smart& _M_smart;
 	  [[no_unique_address]] _Del2 _M_del;
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
 	  const _Tp* _M_p_orig;
+#endif
 	};
 
 #if _GLIBCXX_HOSTED
@@ -316,8 +347,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			       std::forward<_Alloc>(__a));
 	    _M_smart._M_refcount._M_pi = __mem;
 
+#ifdef __cpp_lib_constexpr_shared_ptr
       _M_pv     = _M_smart._M_ptr;
       _M_p_orig = _M_smart._M_ptr;
+#endif
 	  }
 
 	  _GLIBCXX26_CONSTEXPR
@@ -325,16 +358,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_ptr); }
 
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
 	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
+#ifdef __cpp_lib_constexpr_shared_ptr
       if (_M_pv != _M_p_orig)
         _M_smart._M_ptr = static_cast<_Tp*>(_M_pv);
+#endif
 
 	    auto& __pi = _M_smart._M_refcount._M_pi;
 
@@ -345,8 +382,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
 
 	  _Smart& _M_smart;
+#ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
 	  const _Tp* _M_p_orig;
+#endif
 
 	  using _Sp = typename _Smart::element_type*;
 	  using _Scd = _Sp_counted_deleter<_Sp, decay_t<_Del>,
@@ -410,7 +449,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	if (false) // DEBUG !__builtin_is_constant_evaluated())
+#ifndef __cpp_lib_constexpr_shared_ptr
+	_Pointer* __p = *this;
+	return static_cast<void**>(static_cast<void*>(__p));
+#else
+	if (!__builtin_is_constant_evaluated())
 	{
 	  _Pointer* __p = *this;
 	  return static_cast<void**>(static_cast<void*>(__p));
@@ -419,6 +462,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  return _M_impl._M_getv();
 	}
+#endif
       }
 
     private:
@@ -533,7 +577,6 @@ namespace __detail
   /// @cond undocumented
   template<typename _Smart, typename _Pointer, typename... _Args>
   template<typename _Smart2, typename _Pointer2, typename... _Args2>
-    _GLIBCXX26_CONSTEXPR
     inline
     out_ptr_t<_Smart, _Pointer, _Args...>::
     _Impl<_Smart2, _Pointer2, _Args2...>::~_Impl()

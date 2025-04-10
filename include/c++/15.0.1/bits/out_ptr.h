@@ -89,15 +89,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
 #else
-	if (!__builtin_is_constant_evaluated())
-	{
-	  _Pointer* __p = *this;
-	  return static_cast<void**>(static_cast<void*>(__p));
-	}
-	else
-	{
-	  return _M_impl._M_getv();
-	}
+	return _M_impl._M_getv();
 #endif
       }
 
@@ -453,15 +445,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
 #else
-	if (!__builtin_is_constant_evaluated())
-	{
-	  _Pointer* __p = *this;
-	  return static_cast<void**>(static_cast<void*>(__p));
-	}
-	else
-	{
-	  return _M_impl._M_getv();
-	}
+	return _M_impl._M_getv();
 #endif
       }
 

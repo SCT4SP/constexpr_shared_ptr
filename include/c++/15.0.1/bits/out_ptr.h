@@ -180,7 +180,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _Tp*& _M_p;
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
-	  const _Tp* _M_p_orig;
+	  void* _M_p_orig;
 #endif
 	};
 
@@ -252,7 +252,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _Smart& _M_smart;
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
-	  const _Tp* _M_p_orig;
+	  void* _M_p_orig;
 #endif
 	};
 
@@ -307,7 +307,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  [[no_unique_address]] _Del2 _M_del;
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
-	  const _Tp* _M_p_orig;
+	  void* _M_p_orig;
 #endif
 	};
 
@@ -376,7 +376,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _Smart& _M_smart;
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  void* _M_pv;
-	  const _Tp* _M_p_orig;
+	  void* _M_p_orig;
 #endif
 
 	  using _Sp = typename _Smart::element_type*;

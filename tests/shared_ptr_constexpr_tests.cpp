@@ -1012,7 +1012,7 @@ bool inout_tests_basic()
   // shared_ptr; out_ptr; int**
   {
     std::shared_ptr<int> sp;
-    auto f = [&](int **pp) { b = b && sp.get() == *pp; *pp = new int{42}; };
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
     f(std::out_ptr(sp, del));
     b = b && 42 == *sp;
   }
@@ -1020,16 +1020,31 @@ bool inout_tests_basic()
   // shared_ptr; out_ptr; void**
   {
     std::shared_ptr<int> sp;
-    auto f = [&](void **pp) { b = b && sp.get() == *pp; *pp = new int{42}; };
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
     f(std::out_ptr(sp, del));
     b = b && 42 == *sp;
   }
 
+  // n.b. shared_ptr cannot be used with inout_ptr
+
+  // unique_ptr; inout_ptr; int**
   {
     std::unique_ptr<int, decltype(del)> up{new int{42}};
     auto f = [&](int **pp) {
-      b = b && up.get() == *pp;
+      b = b && 42 == **pp;
       delete *pp;
+      *pp = new int{43};
+    };
+    f(std::inout_ptr(up, del));
+    b = b && 43 == *up;
+  }
+
+  // unique_ptr; inout_ptr; void**
+  {
+    std::unique_ptr<int, decltype(del)> up{new int{42}};
+    auto f = [&](void **pp) {
+      b = b && 42 == *static_cast<int*>(*pp);
+      delete static_cast<int*>(*pp);
       *pp = new int{43};
     };
     f(std::inout_ptr(up, del));

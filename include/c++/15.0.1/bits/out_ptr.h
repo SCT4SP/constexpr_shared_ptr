@@ -148,13 +148,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<_Tp*, _Tp*>
 	{
 	  _GLIBCXX26_CONSTEXPR
-	  ~_Impl()
-    {
-      if (_M_pv != _M_p_orig)
-        _M_p = static_cast<_Tp*>(_M_pv);
-    }
-
-	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  { _M_p = nullptr; _M_pv = nullptr; _M_p_orig = nullptr; }
@@ -173,6 +166,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  void**
 	  _M_getv() const
 	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+
+	  _GLIBCXX26_CONSTEXPR
+	  ~_Impl()
+	  {
+	    if (_M_pv != _M_p_orig)
+	      _M_p = static_cast<_Tp*>(_M_pv);
+	  }
 
 	  _Tp*& _M_p;
 	  void* _M_pv;
@@ -217,13 +217,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		     typename unique_ptr<_Tp, _Del>::pointer>
 	{  
 	  _GLIBCXX26_CONSTEXPR
-	  ~_Impl()
-    {
-      if (_M_pv != _M_p_orig)
-        _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
-    }
-
-	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
@@ -238,6 +231,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_getv() const
 	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
 
+	  _GLIBCXX26_CONSTEXPR
+	  ~_Impl()
+	  {
+	    if (_M_pv != _M_p_orig)
+	      _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
+	  }
+
 	  _Smart& _M_smart;
 	  void* _M_pv;
 	  const _Tp* _M_p_orig;
@@ -250,9 +250,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer, _Del2>
 	{
+	  _GLIBCXX26_CONSTEXPR
+	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2 __d)
+	  : _M_smart(__s), _M_del(__d)
+	  {
+	    _M_pv     = _M_smart._M_t._M_ptr();
+	    _M_p_orig = _M_smart._M_t._M_ptr();
+	  }
+
 	  void
 	  _M_out_init()
-	  { _M_smart.reset(); }
+	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
@@ -260,14 +268,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
 	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
+	    if (_M_pv != _M_p_orig)
+	      _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
+	
 	    if (_M_smart.get())
 	      _M_smart._M_t._M_deleter() = std::forward<_Del2>(_M_del);
 	  }
 
 	  _Smart& _M_smart;
 	  [[no_unique_address]] _Del2 _M_del;
+	  void* _M_pv;
+	  const _Tp* _M_p_orig;
 	};
 
 #if _GLIBCXX_HOSTED

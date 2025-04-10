@@ -947,25 +947,48 @@ bool inout_tests_basic()
   bool b = true;
   auto del = [](int* p) { delete p; };
 
+  // raw ptr; out_ptr; int**
   {
-    int i = 6;
-    int* p = &i;
-    auto f = [&](int **pp) {
-      b = b && p == *pp && nullptr == *pp;
-      *pp = new int{7};
-    };
-    f(std::out_ptr(p));
-    b = b && 7 == *p;
-    delete p;
+    int* pi = nullptr;
+    auto f = [&](int **pp) { *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty
+    b = b && 6 == *pi;
+    delete pi;
+  }
 
-    p = &i;
-    auto g = [&](int **pp) {
-      b = b && p == *pp && 6 == **pp;
+  // raw ptr; out_ptr; void**
+  {
+    int* pi = nullptr;
+    auto f = [&](void **pp) { *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty
+    b = b && 6 == *pi;
+    delete pi;
+  }
+
+  // raw ptr; inout_ptr; int**
+  {
+    int* pi = new int{7};
+    auto f = [&](int **pp) {
+      b = b && 7 == **pp;
+      delete *pp;
       *pp = new int{8};
     };
-    g(std::inout_ptr(p));
-    b = b && 8 == *p;
-    delete p;
+    f(std::inout_ptr(pi));
+    b = b && 8 == *pi;
+    delete pi;
+  }
+
+  // raw ptr; inout_ptr; void**
+  {
+    int* pi = new int{7};
+    auto f = [&](void **pp) {
+      b = b && 7 == *static_cast<int*>(*pp);
+      delete static_cast<int*>(*pp);
+      *pp = new int{8};
+    };
+    f(std::inout_ptr(pi));
+    b = b && 8 == *pi;
+    delete pi;
   }
 
   {

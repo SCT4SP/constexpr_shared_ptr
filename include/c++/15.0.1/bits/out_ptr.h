@@ -81,11 +81,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator _Pointer*() const noexcept
       { return _M_impl._M_get(); }
 
+      _GLIBCXX26_CONSTEXPR
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	_Pointer* __p = *this;
-	return static_cast<void**>(static_cast<void*>(__p));
+	if (!__builtin_is_constant_evaluated())
+	{
+	  _Pointer* __p = *this;
+	  return static_cast<void**>(static_cast<void*>(__p));
+	}
+	else
+	{
+	  return _M_impl._M_getv();
+	}
       }
 
     private:
@@ -140,21 +148,35 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<_Tp*, _Tp*>
 	{
 	  _GLIBCXX26_CONSTEXPR
+	  ~_Impl()
+    {
+      if (_M_pv != _M_p_orig)
+        _M_p = static_cast<_Tp*>(_M_pv);
+    }
+
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-	  { _M_p = nullptr; }
+	  { _M_p = nullptr; _M_pv = nullptr; _M_p_orig = nullptr; }
 
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
-	  { }
+	  { _M_pv = _M_p; _M_p_orig = _M_p; }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Tp**
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Tp*&>(_M_p)); }
 
+	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+
 	  _Tp*& _M_p;
+	  void* _M_pv;
+	  const _Tp* _M_p_orig;
 	};
 
       // Partial specialization for raw pointers, with conversion.
@@ -339,11 +361,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator _Pointer*() const noexcept
       { return _M_impl._M_get(); }
 
+      _GLIBCXX26_CONSTEXPR
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	_Pointer* __p = *this;
-	return static_cast<void**>(static_cast<void*>(__p));
+	if (!__builtin_is_constant_evaluated())
+	{
+	  _Pointer* __p = *this;
+	  return static_cast<void**>(static_cast<void*>(__p));
+	}
+	else
+	{
+	  return _M_impl._M_getv();
+	}
       }
 
     private:

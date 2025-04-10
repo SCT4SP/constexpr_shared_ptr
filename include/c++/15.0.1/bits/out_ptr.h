@@ -85,7 +85,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	if (!__builtin_is_constant_evaluated())
+	if (false) // DEBUG !__builtin_is_constant_evaluated())
 	{
 	  _Pointer* __p = *this;
 	  return static_cast<void**>(static_cast<void*>(__p));
@@ -217,16 +217,30 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		     typename unique_ptr<_Tp, _Del>::pointer>
 	{  
 	  _GLIBCXX26_CONSTEXPR
+	  ~_Impl()
+    {
+      if (_M_pv != _M_p_orig)
+        _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
+    }
+
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-	  { _M_smart.reset(); }
+	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
+	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+
 	  _Smart& _M_smart;
+	  void* _M_pv;
+	  const _Tp* _M_p_orig;
 	};
 
       // Partial specialization for std::unique_ptr with replacement deleter.
@@ -283,6 +297,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    ::new (__mem) _Scd(nullptr, std::forward<_Del>(__d),
 			       std::forward<_Alloc>(__a));
 	    _M_smart._M_refcount._M_pi = __mem;
+
+      _M_pv     = _M_smart._M_ptr;
+      _M_p_orig = _M_smart._M_ptr;
 	  }
 
 	  _GLIBCXX26_CONSTEXPR
@@ -291,8 +308,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  { return __builtin_addressof(_M_smart._M_ptr); }
 
 	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
+      if (_M_pv != _M_p_orig)
+        _M_smart._M_ptr = static_cast<_Tp*>(_M_pv);
+
 	    auto& __pi = _M_smart._M_refcount._M_pi;
 
 	    if (_Sp __ptr = _M_smart.get())
@@ -302,6 +327,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
 
 	  _Smart& _M_smart;
+	  void* _M_pv;
+	  const _Tp* _M_p_orig;
 
 	  using _Sp = typename _Smart::element_type*;
 	  using _Scd = _Sp_counted_deleter<_Sp, decay_t<_Del>,
@@ -365,7 +392,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-	if (!__builtin_is_constant_evaluated())
+	if (false) // DEBUG !__builtin_is_constant_evaluated())
 	{
 	  _Pointer* __p = *this;
 	  return static_cast<void**>(static_cast<void*>(__p));

@@ -949,18 +949,20 @@ bool inout_tests_basic()
 
   // raw ptr; out_ptr; int**
   {
-    int* pi = nullptr;
-    auto f = [&](int **pp) { *pp = new int{6}; };
-    f(std::out_ptr(pi)); // Use out_ptr as pi is empty
+    int i = 0;
+    int* pi = &i;
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty/automatic
     b = b && 6 == *pi;
     delete pi;
   }
 
   // raw ptr; out_ptr; void**
   {
-    int* pi = nullptr;
-    auto f = [&](void **pp) { *pp = new int{6}; };
-    f(std::out_ptr(pi)); // Use out_ptr as pi is empty
+    int i = 0;
+    int* pi = &i;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty/automatic
     b = b && 6 == *pi;
     delete pi;
   }
@@ -991,16 +993,34 @@ bool inout_tests_basic()
     delete pi;
   }
 
+  // unique_ptr; out_ptr; int**
   {
     std::unique_ptr<int, decltype(del)> up;
-    auto f = [&](int **pp) { b = b && up.get() == *pp; *pp = new int{42}; };
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
     f(std::out_ptr(up));
     b = b && 42 == *up;
   }
 
+  // unique_ptr; out_ptr; void**
+  {
+    std::unique_ptr<int, decltype(del)> up;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+    f(std::out_ptr(up));
+    b = b && 42 == *up;
+  }
+
+  // shared_ptr; out_ptr; int**
   {
     std::shared_ptr<int> sp;
     auto f = [&](int **pp) { b = b && sp.get() == *pp; *pp = new int{42}; };
+    f(std::out_ptr(sp, del));
+    b = b && 42 == *sp;
+  }
+
+  // shared_ptr; out_ptr; void**
+  {
+    std::shared_ptr<int> sp;
+    auto f = [&](void **pp) { b = b && sp.get() == *pp; *pp = new int{42}; };
     f(std::out_ptr(sp, del));
     b = b && 42 == *sp;
   }

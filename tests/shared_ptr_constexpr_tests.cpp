@@ -941,12 +941,132 @@ void atomic_tests()
   static_assert(atomic_tests_basic());
 }
 
+constexpr
+bool inout_tests_basic()
+{
+  bool b = true;
+  auto del = [](int* p) { delete p; };
+
+  // raw ptr; out_ptr; int**
+  {
+    int i = 0;
+    int* pi = &i;
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty/automatic
+    b = b && 6 == *pi;
+    delete pi;
+  }
+
+  // raw ptr; out_ptr; void**
+  {
+    int i = 0;
+    int* pi = &i;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{6}; };
+    f(std::out_ptr(pi)); // Use out_ptr as pi is empty/automatic
+    b = b && 6 == *pi;
+    delete pi;
+  }
+
+  // raw ptr; inout_ptr; int**
+  {
+    int* pi = new int{7};
+    auto f = [&](int **pp) {
+      b = b && 7 == **pp;
+      delete *pp;
+      *pp = new int{8};
+    };
+    f(std::inout_ptr(pi));
+    b = b && 8 == *pi;
+    delete pi;
+  }
+
+  // raw ptr; inout_ptr; void**
+  {
+    int* pi = new int{7};
+    auto f = [&](void **pp) {
+      b = b && 7 == *static_cast<int*>(*pp);
+      delete static_cast<int*>(*pp);
+      *pp = new int{8};
+    };
+    f(std::inout_ptr(pi));
+    b = b && 8 == *pi;
+    delete pi;
+  }
+
+  // unique_ptr; out_ptr; int**
+  {
+    std::unique_ptr<int, decltype(del)> up;
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+    f(std::out_ptr(up));
+    b = b && 42 == *up;
+  }
+
+  // unique_ptr; out_ptr; void**
+  {
+    std::unique_ptr<int, decltype(del)> up;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+    f(std::out_ptr(up));
+    b = b && 42 == *up;
+  }
+
+  // shared_ptr; out_ptr; int**
+  {
+    std::shared_ptr<int> sp;
+    auto f = [&](int **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+    f(std::out_ptr(sp, del));
+    b = b && 42 == *sp;
+  }
+
+  // shared_ptr; out_ptr; void**
+  {
+    std::shared_ptr<int> sp;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+    f(std::out_ptr(sp, del));
+    b = b && 42 == *sp;
+  }
+
+  // n.b. shared_ptr cannot be used with inout_ptr
+
+  // unique_ptr; inout_ptr; int**
+  {
+    std::unique_ptr<int, decltype(del)> up{new int{42}};
+    auto f = [&](int **pp) {
+      b = b && 42 == **pp;
+      delete *pp;
+      *pp = new int{43};
+    };
+    f(std::inout_ptr(up, del));
+    b = b && 43 == *up;
+  }
+
+  // unique_ptr; inout_ptr; void**
+  {
+    std::unique_ptr<int, decltype(del)> up{new int{42}};
+    auto f = [&](void **pp) {
+      b = b && 42 == *static_cast<int*>(*pp);
+      delete static_cast<int*>(*pp);
+      *pp = new int{43};
+    };
+    f(std::inout_ptr(up, del));
+    b = b && 43 == *up;
+  }
+
+  return b;
+}
+
+void inout_tests()
+{
+  assert(inout_tests_basic());
+  static_assert(inout_tests_basic());
+}
+
 int main(int argc, char *argv[])
 {
   static_assert(__cpp_lib_constexpr_shared_ptr);
   static_assert(__gnu_cxx::__is_single_threaded());
   memory_tests();
   atomic_tests();
+  inout_tests();
 
   return 0;
 }

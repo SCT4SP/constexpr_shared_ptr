@@ -265,8 +265,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
-	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2 __d)
-	  : _M_smart(__s), _M_del(__d)
+	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2&& __d)
+	  : _M_smart(__s), _M_del(std::forward<_Del2>(__d))
 	  {
 	    _M_pv     = _M_smart._M_t._M_ptr();
 	    _M_p_orig = _M_smart._M_t._M_ptr();

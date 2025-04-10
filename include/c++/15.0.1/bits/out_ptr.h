@@ -89,15 +89,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
 #else
-	if (!__builtin_is_constant_evaluated())
-	{
-	  _Pointer* __p = *this;
-	  return static_cast<void**>(static_cast<void*>(__p));
-	}
-	else
-	{
-	  return _M_impl._M_getv();
-	}
+	return _M_impl._M_getv();
 #endif
       }
 
@@ -273,8 +265,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 #ifdef __cpp_lib_constexpr_shared_ptr
 	  _GLIBCXX26_CONSTEXPR
-	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2 __d)
-	  : _M_smart(__s), _M_del(__d)
+	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2&& __d)
+	  : _M_smart(__s), _M_del(std::forward<_Del2>(__d))
 	  {
 	    _M_pv     = _M_smart._M_t._M_ptr();
 	    _M_p_orig = _M_smart._M_t._M_ptr();
@@ -453,15 +445,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
 #else
-	if (!__builtin_is_constant_evaluated())
-	{
-	  _Pointer* __p = *this;
-	  return static_cast<void**>(static_cast<void*>(__p));
-	}
-	else
-	{
-	  return _M_impl._M_getv();
-	}
+	return _M_impl._M_getv();
 #endif
       }
 

@@ -291,17 +291,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  void**
 	  _M_getv() const
 	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
+#ifdef __cpp_lib_constexpr_shared_ptr
 	    if (_M_pv != _M_p_orig)
 	      _M_smart._M_t._M_ptr() = static_cast<_Smart::element_type*>(_M_pv);
+#endif
 	
 	    if (_M_smart.get())
 	      _M_smart._M_t._M_deleter() = std::forward<_Del2>(_M_del);
 	  }
-#endif
 
 	  _Smart& _M_smart;
 	  [[no_unique_address]] _Del2 _M_del;

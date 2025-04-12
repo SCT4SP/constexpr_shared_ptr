@@ -945,7 +945,7 @@ constexpr
 bool inout_tests_basic()
 {
   bool b = true;
-  auto del = [](int* p) { delete p; };
+  auto del = [](auto* p) { delete p; };
 
   // raw ptr; out_ptr; int**
   {
@@ -1051,16 +1051,39 @@ bool inout_tests_basic()
     b = b && 43 == *up;
   }
 
+  auto delA = [](auto* p) { delete [] p; };
+
   {
-    auto del2 = [](int * p) { delete [] p; };
-    std::unique_ptr<int[], decltype(del2)> up{new int[2]{42, 43}};
+    std::unique_ptr<int[], decltype(delA)> up{new int[2]{42, 43}};
     auto f = [&](int **pp) {
-      //b = b && 42 == **pp;
+      b = b && 42 == up[0] && 43 == up[1];
       delete [] *pp;
-      *pp = new int[]{44, 45};
+      *pp = new int[2]{44, 45};
     };
-    f(std::inout_ptr(up, del2));
+    f(std::inout_ptr(up, delA));
     b = b && 44 == up[0] && 45 == up[1];
+  }
+
+  {
+    struct move_only_type {
+      move_only_type() = delete;
+      constexpr move_only_type(int i): i_{i} {}
+      move_only_type(const move_only_type&) = delete;
+      move_only_type(move_only_type&&) = default;
+
+      int i_;
+    };
+
+    static_assert(!std::default_initializable<move_only_type>);
+    move_only_type* p = new move_only_type[2]{42, 43};
+    std::unique_ptr<move_only_type[], decltype(delA)> up{p};
+    auto f = [&](move_only_type **pp) {
+      b = b && 42 == up[0].i_ && 43 == up[1].i_;
+      delete [] *pp;
+      *pp = new move_only_type[2]{44, 45};
+    };
+    f(std::inout_ptr(up, delA));
+    b = b && 44 == up[0].i_ && 45 == up[1].i_;
   }
 
   return b;

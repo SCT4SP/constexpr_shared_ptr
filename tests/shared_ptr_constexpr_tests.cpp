@@ -1051,6 +1051,18 @@ bool inout_tests_basic()
     b = b && 43 == *up;
   }
 
+  {
+    auto del2 = [](int * p) { delete [] p; };
+    std::unique_ptr<int[], decltype(del2)> up{new int[2]{42, 43}};
+    auto f = [&](int **pp) {
+      //b = b && 42 == **pp;
+      delete [] *pp;
+      *pp = new int[]{44, 45};
+    };
+    f(std::inout_ptr(up, del2));
+    b = b && 44 == up[0] && 45 == up[1];
+  }
+
   return b;
 }
 

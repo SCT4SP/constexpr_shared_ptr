@@ -296,7 +296,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  ~_Impl()
 	  {
 	    if (_M_pv != _M_p_orig)
-	      _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
+	      _M_smart._M_t._M_ptr() = static_cast<_Smart::element_type*>(_M_pv);
 	
 	    if (_M_smart.get())
 	      _M_smart._M_t._M_deleter() = std::forward<_Del2>(_M_del);
@@ -362,7 +362,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  {
 #ifdef __cpp_lib_constexpr_shared_ptr
       if (_M_pv != _M_p_orig)
-        _M_smart._M_ptr = static_cast<_Tp*>(_M_pv);
+        _M_smart._M_ptr = static_cast<_Smart::element_type*>(_M_pv);
 #endif
 
 	    auto& __pi = _M_smart._M_refcount._M_pi;

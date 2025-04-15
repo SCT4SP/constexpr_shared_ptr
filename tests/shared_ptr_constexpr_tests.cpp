@@ -926,6 +926,9 @@ bool atomic_tests_basic()
   int i = ai0.load();
   b = b && i == 43;
 
+  std::atomic<int*> ap0, ap1{nullptr};
+  b = b && ap0 == ap1;
+
   std::atomic_flag af{false};
   b = b && false == af.test_and_set();
   b = b && true == af.test();

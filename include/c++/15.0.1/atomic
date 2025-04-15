@@ -437,6 +437,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       constexpr atomic(__pointer_type __p) noexcept : _M_b(__p) { }
 
+      _GLIBCXX26_CONSTEXPR
       operator __pointer_type() const noexcept
       { return __pointer_type(_M_b); }
 

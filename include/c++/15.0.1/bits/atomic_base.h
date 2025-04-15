@@ -756,6 +756,7 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
       // Requires __pointer_type convertible to _M_p.
       constexpr __atomic_base(__pointer_type __p) noexcept : _M_p (__p) { }
 
+      _GLIBCXX26_CONSTEXPR
       operator __pointer_type() const noexcept
       { return load(); }
 
@@ -875,6 +876,7 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
 	__atomic_store_n(&_M_p, __p, int(__m));
       }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       load(memory_order __m = memory_order_seq_cst) const noexcept
       {
@@ -883,7 +885,7 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
 	__glibcxx_assert(__b != memory_order_release);
 	__glibcxx_assert(__b != memory_order_acq_rel);
 
-	return __atomic_load_n(&_M_p, int(__m));
+	return ce__atomic_load_n(&_M_p, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type

@@ -452,6 +452,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(__pointer_type __p) volatile noexcept
       { return _M_b.operator=(__p); }
 
+      _GLIBCXX26_CONSTEXPR
       __pointer_type
       operator++(int) noexcept
       {
@@ -583,6 +584,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    memory_order __m = memory_order_seq_cst) volatile noexcept
       { return _M_b.store(__p, __m); }
 
+      _GLIBCXX26_CONSTEXPR
       __pointer_type
       load(memory_order __m = memory_order_seq_cst) const noexcept
       { return _M_b.load(__m); }
@@ -671,6 +673,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { _M_b.notify_all(); }
 #endif // __cpp_lib_atomic_wait
 
+      _GLIBCXX26_CONSTEXPR
       __pointer_type
       fetch_add(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) noexcept

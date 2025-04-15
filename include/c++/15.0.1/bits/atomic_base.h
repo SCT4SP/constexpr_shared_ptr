@@ -76,7 +76,13 @@ void ce__atomic_load(auto *ptr, auto *ret, int memorder)
 _GLIBCXX26_CONSTEXPR
 auto ce__atomic_fetch_add(auto *ptr, auto val, int memorder)
 {
-  if consteval { auto tmp = *ptr; *ptr += val; return tmp; }
+  if consteval {
+    if constexpr (std::is_pointer_v<decltype(*ptr)>) {
+      auto tmp = *ptr; *ptr += val/sizeof(decltype(*ptr)); return tmp;
+    } else {
+      auto tmp = *ptr; *ptr += val;                        return tmp;
+    }
+  }
   else         { return __atomic_fetch_add(ptr, val, memorder); }
 }
 _GLIBCXX26_CONSTEXPR
@@ -777,6 +783,7 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
 	return __p;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __pointer_type
       operator++(int) noexcept
       { return fetch_add(1); }
@@ -983,10 +990,11 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
       // TODO add const volatile overload
 #endif // __glibcxx_atomic_wait
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_add(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
+      { return ce__atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_add(ptrdiff_t __d,

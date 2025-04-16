@@ -411,19 +411,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	constexpr _Atomic_count() noexcept = default;
 
+	_GLIBCXX26_CONSTEXPR
 	explicit
 	_Atomic_count(__count_type&& __c) noexcept
-	: _M_val(reinterpret_cast<uintptr_t>(__c._M_pi))
+#if !defined(__cpp_lib_constexpr_shared_ptr)
+	: _M_val(reinterpret_cast<uintptr_t>(__c._M_pi)),
+#else
+	: _M_val(0), _M_ptr(__c._M_pi)
+#endif
 	{
 	  __c._M_pi = nullptr;
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	~_Atomic_count()
 	{
 	  auto __val = _M_val.load(memory_order_relaxed);
 	  _GLIBCXX_TSAN_MUTEX_DESTROY(&_M_val);
 	  __glibcxx_assert(!(__val & _S_lock_bit));
+#if !defined(__cpp_lib_constexpr_shared_ptr)
 	  if (auto __pi = reinterpret_cast<pointer>(__val))
+#else
+	  if (auto __pi = _M_ptr)
+#endif
 	    {
 	      if constexpr (__is_shared_ptr<_Tp>)
 		__pi->_M_release();
@@ -437,10 +447,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	// Precondition: Caller does not hold lock!
 	// Returns the raw pointer value without the lock bit set.
+	_GLIBCXX26_CONSTEXPR
 	pointer
 	lock(memory_order __o) const noexcept
 	{
 	  // To acquire the lock we flip the LSB from 0 to 1.
+	
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  if consteval {
+	    auto __current = _M_val.load(memory_order_relaxed);
+	    __current = __current & ~_S_lock_bit;
+	    return _M_ptr;
+	  }
+#endif
 
 	  auto __current = _M_val.load(memory_order_relaxed);
 	  while (__current & _S_lock_bit)
@@ -470,6 +489,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
 	// Precondition: caller holds lock!
+	_GLIBCXX26_CONSTEXPR
 	void
 	unlock(memory_order __o) const noexcept
 	{
@@ -522,12 +542,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       private:
 	mutable __atomic_base<uintptr_t> _M_val{0};
+	const pointer _M_ptr;
 	static constexpr uintptr_t _S_lock_bit{1};
       };
 
       typename _Tp::element_type* _M_ptr = nullptr;
       _Atomic_count _M_refcount;
 
+      _GLIBCXX26_CONSTEXPR
       static typename _Atomic_count::pointer
       _S_add_ref(typename _Atomic_count::pointer __p)
       {
@@ -543,6 +565,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       constexpr _Sp_atomic() noexcept = default;
 
+      _GLIBCXX26_CONSTEXPR
       explicit
       _Sp_atomic(value_type __r) noexcept
       : _M_ptr(__r._M_ptr), _M_refcount(std::move(__r._M_refcount))
@@ -553,6 +576,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Sp_atomic(const _Sp_atomic&) = delete;
       void operator=(const _Sp_atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       value_type
       load(memory_order __o) const noexcept
       {
@@ -645,6 +669,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // 3661. constinit atomic<shared_ptr<T>> a(nullptr); should work
       constexpr atomic(nullptr_t) noexcept : atomic() { }
 
+      _GLIBCXX26_CONSTEXPR
       atomic(shared_ptr<_Tp> __r) noexcept
       : _M_impl(std::move(__r))
       { }
@@ -652,6 +677,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       atomic(const atomic&) = delete;
       void operator=(const atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       load(memory_order __o = memory_order_seq_cst) const noexcept
       { return _M_impl.load(__o); }

@@ -936,17 +936,6 @@ bool atomic_tests_basic()
   int* p1 = ap2++;
   b = b && 0 == *p0 && 1 == *p1 && 1 == *ap1.load() && 2 == *ap2.load();
 
-/*
-  {
-    int* p = new int{42};
-    //std::atomic<std::shared_ptr<int>> asp0;
-    std::shared_ptr<int> sp1{p};
-    std::shared_ptr<int> sp2 = sp1;
-    std::atomic<std::shared_ptr<int>> asp2{sp1};
-    b = b && 42 == *asp2.load();
-  }
-*/
-
   std::atomic_flag af{false};
   b = b && false == af.test_and_set();
   b = b && true == af.test();
@@ -956,10 +945,25 @@ bool atomic_tests_basic()
   return b;
 }
 
+constexpr
+bool atomic_smart_ptr_tests()
+{
+  bool b = true;
+  int* p = new int{42};
+  std::shared_ptr<int> sp1{p};
+  std::shared_ptr<int> sp2 = sp1;
+  std::atomic<std::shared_ptr<int>> asp2{sp1};
+  b = b && 42 == *asp2.load();
+
+  return b;
+}
+
 void atomic_tests()
 {
   assert(atomic_tests_basic());
   static_assert(atomic_tests_basic());
+  assert(atomic_smart_ptr_tests());
+  static_assert(atomic_smart_ptr_tests());
 }
 
 constexpr

@@ -914,8 +914,7 @@ void memory_tests()
 constexpr
 bool atomic_tests_basic()
 {
-  std::atomic_int ai0;
-  std::atomic_int ai1{0};
+  std::atomic_int ai0, ai1{0};
   std::atomic<int> ai2{0};
   bool b = ai1 == ai2;
   ai1++; ai1++; ai2--;
@@ -924,15 +923,17 @@ bool atomic_tests_basic()
 
   ai0.store(43);
   int i = ai0.load();
+  ai0.wait(44);
+  ai0.notify_one();
+  ai0.notify_all();
   b = b && i == 43;
 
-  int arr[5] = {0, 1, 2, 3, 4};
+  int arr[] = {0, 1, 2};
   std::atomic<int*> ap0, ap1{nullptr}, ap2{&arr[0]};
-  int* pi = ap2.load();
-  b = b && ap0 == ap1 && 0 == *pi;
-  //ap2++;
+  b = b && ap0 == ap1 && 0 == *ap2.load();
   int* p0 = ap2.fetch_add(1);
-  b = b && 0 == *p0 && 1 == *ap2.load();
+  int* p1 = ap2++;
+  b = b && 0 == *p0 && 1 == *p1 && 2 == *ap2.load();
 
   std::atomic_flag af{false};
   b = b && false == af.test_and_set();
@@ -946,7 +947,7 @@ bool atomic_tests_basic()
 void atomic_tests()
 {
   assert(atomic_tests_basic());
-//  static_assert(atomic_tests_basic());
+  static_assert(atomic_tests_basic());
 }
 
 constexpr

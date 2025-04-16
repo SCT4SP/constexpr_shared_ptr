@@ -77,10 +77,10 @@ _GLIBCXX26_CONSTEXPR
 auto ce__atomic_fetch_add(auto *ptr, auto val, int memorder)
 {
   if consteval {
-    if constexpr (std::is_pointer_v<decltype(*ptr)>) {
-      auto tmp = *ptr; *ptr += val/sizeof(decltype(*ptr)); return tmp;
+    if constexpr (std::is_pointer_v<std::decay_t<decltype(*ptr)>>) {
+      auto tmp = *ptr; *ptr += val/sizeof(**ptr); return tmp;
     } else {
-      auto tmp = *ptr; *ptr += val;                        return tmp;
+      auto tmp = *ptr; *ptr += val;               return tmp;
     }
   }
   else         { return __atomic_fetch_add(ptr, val, memorder); }
@@ -108,6 +108,22 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
 {
   if consteval { auto tmp = *ptr; *ptr = 1; return tmp; }
   else         { return __atomic_test_and_set(ptr, memorder); }
+}
+template<typename _Tp, typename _ValFn>
+_GLIBCXX26_CONSTEXPR
+void
+ce__atomic_wait_address_v(const _Tp* __addr, _Tp __old, _ValFn __vfn) noexcept
+{
+  if consteval { if (*__addr == __old) { while(false); } } // infinite loop
+  else         { std::__atomic_wait_address_v(__addr, __old, __vfn); }
+}
+template<typename _Tp>
+_GLIBCXX26_CONSTEXPR
+void
+ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
+{
+  if consteval {                /* nothing */                 }
+  else         { std::__atomic_notify_address(__addr, __all); }
 }
 #endif
 
@@ -662,25 +678,28 @@ bool ce__atomic_test_and_set(auto *ptr, int memorder)
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       wait(__int_type __old,
 	  memory_order __m = memory_order_seq_cst) const noexcept
       {
-	std::__atomic_wait_address_v(&_M_i, __old,
+	ce__atomic_wait_address_v(&_M_i, __old,
 			   [__m, this] { return this->load(__m); });
       }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_one() noexcept
-      { std::__atomic_notify_address(&_M_i, false); }
+      { ce__atomic_notify_address(&_M_i, false); }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_all() noexcept
-      { std::__atomic_notify_address(&_M_i, true); }
+      { ce__atomic_notify_address(&_M_i, true); }
 
       // TODO add const volatile overload
 #endif // __glibcxx_atomic_wait

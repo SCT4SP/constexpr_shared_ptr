@@ -875,6 +875,7 @@ ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
 	    reinterpret_cast<void *>(-__alignof(_M_p)));
       }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       store(__pointer_type __p,
 	    memory_order __m = memory_order_seq_cst) noexcept
@@ -886,7 +887,7 @@ ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
 	__glibcxx_assert(__b != memory_order_acq_rel);
 	__glibcxx_assert(__b != memory_order_consume);
 
-	__atomic_store_n(&_M_p, __p, int(__m));
+	ce__atomic_store_n(&_M_p, __p, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE void

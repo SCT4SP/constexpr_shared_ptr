@@ -932,8 +932,20 @@ bool atomic_tests_basic()
   std::atomic<int*> ap0, ap1{nullptr}, ap2{&arr[0]};
   b = b && ap0 == ap1 && 0 == *ap2.load();
   int* p0 = ap2.fetch_add(1);
+  ap1.store(ap2.load());
   int* p1 = ap2++;
-  b = b && 0 == *p0 && 1 == *p1 && 2 == *ap2.load();
+  b = b && 0 == *p0 && 1 == *p1 && 1 == *ap1.load() && 2 == *ap2.load();
+
+/*
+  {
+    int* p = new int{42};
+    //std::atomic<std::shared_ptr<int>> asp0;
+    std::shared_ptr<int> sp1{p};
+    std::shared_ptr<int> sp2 = sp1;
+    std::atomic<std::shared_ptr<int>> asp2{sp1};
+    b = b && 42 == *asp2.load();
+  }
+*/
 
   std::atomic_flag af{false};
   b = b && false == af.test_and_set();

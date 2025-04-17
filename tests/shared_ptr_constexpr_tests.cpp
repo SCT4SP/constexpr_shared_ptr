@@ -923,18 +923,19 @@ bool atomic_tests_basic()
 
   ai0.store(43);
   int i = ai0.load();
-  ai0.wait(44);
+  ai0.wait(44); // change to 43 for a compile-time infinite loop
   ai0.notify_one();
   ai0.notify_all();
   b = b && i == 43;
 
-  int arr[] = {0, 1, 2};
+  int arr[] = {10, 20, 30};
   std::atomic<int*> ap0, ap1{nullptr}, ap2{&arr[0]};
-  b = b && ap0 == ap1 && 0 == *ap2.load();
+  int* p = ap0; // conversion operator; also used by ==
+  b = b && p == ap0 && ap0 == ap1 && 10 == *ap2.load();
   int* p0 = ap2.fetch_add(1);
   ap1.store(ap2.load());
   int* p1 = ap2++;
-  b = b && 0 == *p0 && 1 == *p1 && 1 == *ap1.load() && 2 == *ap2.load();
+  b = b && 10 == *p0 && 20 == *p1 && 20 == *ap1.load() && 30 == *ap2.load();
 
   std::atomic_flag af{false};
   b = b && false == af.test_and_set();
@@ -950,10 +951,23 @@ bool atomic_smart_ptr_tests()
 {
   bool b = true;
   int* p = new int{42};
-  std::shared_ptr<int> sp1{p};
-  std::shared_ptr<int> sp2 = sp1;
-  std::atomic<std::shared_ptr<int>> asp2{sp1};
-  b = b && 42 == *asp2.load();
+  std::shared_ptr<int> sp0, sp1{p}, sp2 = sp1;
+
+  std::atomic<std::shared_ptr<int>>   asp0;
+  std::atomic<std::shared_ptr<int>>   asp1{sp0};
+  asp1 = sp0;
+  std::atomic<std::shared_ptr<int>>   asp2{sp1};
+  std::shared_ptr<int> sp4 = asp1; // conversion operator
+
+  asp1.store(asp2.load());
+  b = b && 42 == *asp1.load() && 42 == *asp2.load();
+
+  int* parr = new int[]{10, 20, 30};
+  std::shared_ptr<int[]> sp3{parr};
+  std::atomic<std::shared_ptr<int[]>> asp3{sp3};
+  b = b && 10 == asp3.load()[0];
+
+  //asp2.wait(sp2); // can't get non-termination
 
   return b;
 }

@@ -414,10 +414,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_GLIBCXX26_CONSTEXPR
 	explicit
 	_Atomic_count(__count_type&& __c) noexcept
-#if !defined(__cpp_lib_constexpr_shared_ptr)
-	: _M_val(reinterpret_cast<uintptr_t>(__c._M_pi)),
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	: _M_val(__c._M_pi)
 #else
-	: _M_val(0), _M_pi(__c._M_pi)   // 0 unlocked; 1 (i.e. _S_lock_bit) locked
+	: _M_val(reinterpret_cast<uintptr_t>(__c._M_pi))
 #endif
 	{
 	  __c._M_pi = nullptr;
@@ -426,13 +426,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_GLIBCXX26_CONSTEXPR
 	~_Atomic_count()
 	{
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  // in constexpr there is no bit needed
+	  pointer __pi = _M_val.load(memory_order_relaxed);
+	  if !consteval {
+	    auto __val = reinterpret_cast<uintptr_t>(__pi);
+	    _GLIBCXX_TSAN_MUTEX_DESTROY(&_M_val);
+	    __glibcxx_assert(!(__val & _S_lock_bit));
+	    __pi = reinterpret_cast<pointer>(__val);
+	  }
+	  if (__pi)
+#else
 	  auto __val = _M_val.load(memory_order_relaxed);
 	  _GLIBCXX_TSAN_MUTEX_DESTROY(&_M_val);
 	  __glibcxx_assert(!(__val & _S_lock_bit));
-#if !defined(__cpp_lib_constexpr_shared_ptr)
 	  if (auto __pi = reinterpret_cast<pointer>(__val))
-#else
-	  if (auto __pi = _M_pi)
 #endif
 	    {
 	      if constexpr (__is_shared_ptr<_Tp>)
@@ -452,16 +460,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	lock(memory_order __o) const noexcept
 	{
 	  // To acquire the lock we flip the LSB from 0 to 1.
-	
-#if defined(__cpp_lib_constexpr_shared_ptr)
-	  if consteval {
-	    _M_val = _S_lock_bit;
-	    return _M_pi;
-	  }
-#endif
-
 	  auto __current = _M_val.load(memory_order_relaxed);
+
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  if !consteval {
+	  while (reinterpret_cast<uintptr_t>(__current) & _S_lock_bit)
+#else
 	  while (__current & _S_lock_bit)
+#endif
 	    {
 #if __glibcxx_atomic_wait
 	      __detail::__thread_relax();
@@ -472,7 +478,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
 
 	  while (!_M_val.compare_exchange_strong(__current,
+#if defined(__cpp_lib_constexpr_shared_ptr)
+						 reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) | _S_lock_bit),
+#else
 						 __current | _S_lock_bit,
+#endif
 						 __o,
 						 memory_order_relaxed))
 	    {
@@ -480,11 +490,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #if __glibcxx_atomic_wait
 	      __detail::__thread_relax();
 #endif
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	      __current = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) & ~_S_lock_bit);
+#else
 	      __current = __current & ~_S_lock_bit;
+#endif
 	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
 	    }
 	  _GLIBCXX_TSAN_MUTEX_LOCKED(&_M_val);
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  }
+	  return __current;
+#else
 	  return reinterpret_cast<pointer>(__current);
+#endif
 	}
 
 	// Precondition: caller holds lock!
@@ -494,7 +513,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 #if defined(__cpp_lib_constexpr_shared_ptr)
 	  if consteval {
-	    _M_val = 0;
 	    return;
 	  }
 #endif
@@ -509,21 +527,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	void
 	_M_swap_unlock(__count_type& __c, memory_order __o) noexcept
 	{
+	  if (__o != memory_order_seq_cst)
+	    __o = memory_order_release;
 #if defined(__cpp_lib_constexpr_shared_ptr)
 	  if consteval {
-	    _M_val    = 0;
-	    _M_pi     = __c._M_pi;
-	    __c._M_pi = nullptr;
+	    __c._M_pi = _M_val.exchange(__c._M_pi, __o);
 	    return;
 	  }
 #endif
-	  if (__o != memory_order_seq_cst)
-	    __o = memory_order_release;
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  auto __x = __c._M_pi;
+#else
 	  auto __x = reinterpret_cast<uintptr_t>(__c._M_pi);
+#endif
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  __x = _M_val.exchange(__x, __o);
 	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  __c._M_pi = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__x) & ~_S_lock_bit);
+#else
 	  __c._M_pi = reinterpret_cast<pointer>(__x & ~_S_lock_bit);
+#endif
 	}
 
 #if __glibcxx_atomic_wait
@@ -555,9 +579,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
       private:
-	mutable __atomic_base<uintptr_t> _M_val{0};
 #if defined(__cpp_lib_constexpr_shared_ptr)
-	pointer _M_pi{nullptr};
+	mutable __atomic_base<pointer> _M_val{0};
+#else
+	mutable __atomic_base<uintptr_t> _M_val{0};
 #endif
 	static constexpr uintptr_t _S_lock_bit{1};
       };

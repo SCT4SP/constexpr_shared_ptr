@@ -125,6 +125,12 @@ ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
   if consteval {                /* nothing */                 }
   else         { std::__atomic_notify_address(__addr, __all); }
 }
+_GLIBCXX26_CONSTEXPR
+auto ce__atomic_exchange_n(auto *ptr, auto val, int memorder)
+{
+  if consteval { auto tmp = *ptr; *ptr = val; return tmp; }
+  else         { return __atomic_exchange_n(ptr, val, memorder); }
+}
 #endif
 
   /// Enumeration for memory_order
@@ -926,11 +932,12 @@ ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
 	return __atomic_load_n(&_M_p, int(__m));
       }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       exchange(__pointer_type __p,
 	       memory_order __m = memory_order_seq_cst) noexcept
       {
-	return __atomic_exchange_n(&_M_p, __p, int(__m));
+	return ce__atomic_exchange_n(&_M_p, __p, int(__m));
       }
 
 

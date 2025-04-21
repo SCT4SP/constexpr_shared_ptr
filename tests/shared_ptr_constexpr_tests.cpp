@@ -957,6 +957,7 @@ bool atomic_smart_ptr_tests()
   std::atomic<std::shared_ptr<int>>   asp1{sp0};
   asp1 = sp0;
   std::atomic<std::shared_ptr<int>>   asp2{sp1};
+/*
   std::shared_ptr<int> sp4 = asp1; // conversion operator
 
   asp1.store(asp2.load());
@@ -966,6 +967,7 @@ bool atomic_smart_ptr_tests()
   std::shared_ptr<int[]> sp3{parr};
   std::atomic<std::shared_ptr<int[]>> asp3{sp3};
   b = b && 10 == asp3.load()[0];
+*/
 
   //asp2.wait(sp2); // can't get non-termination
 

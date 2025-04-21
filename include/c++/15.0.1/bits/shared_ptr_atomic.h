@@ -516,9 +516,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    return;
 	  }
 #endif
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
+	  auto __current = _M_val.load(memory_order_relaxed);
+	  _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+
+	  while (!_M_val.compare_exchange_strong(__current,
+						 reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) & ~_S_lock_bit),
+						 __o,
+						 memory_order_relaxed))
+	    {
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK_FAILED(&_M_val);
+#if __glibcxx_atomic_wait
+	      __detail::__thread_relax();
+#endif
+	      __current = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) | _S_lock_bit);
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+	    }
+	  _GLIBCXX_TSAN_MUTEX_LOCKED(&_M_val);
+#else
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  _M_val.fetch_sub(1, __o);
 	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
+#endif
 	}
 
 	// Swaps the values of *this and __c, and unlocks *this.

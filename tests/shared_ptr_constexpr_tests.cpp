@@ -957,8 +957,9 @@ bool atomic_smart_ptr_tests()
   std::atomic<std::shared_ptr<int>>   asp1{sp0};
   asp1 = sp0;
   std::atomic<std::shared_ptr<int>>   asp2{sp1};
-/*
   std::shared_ptr<int> sp4 = asp1; // conversion operator
+
+/*
 
   asp1.store(asp2.load());
   b = b && 42 == *asp1.load() && 42 == *asp2.load();

@@ -972,6 +972,44 @@ bool atomic_smart_ptr_tests()
   asp2.notify_one();
   asp2.notify_all();
 
+  // Hana's atomic_test()
+  {
+    std::atomic<std::shared_ptr<int>> aptr = std::make_shared<int>(42);
+    std::shared_ptr<int> ptr1 = aptr.load();
+    b = b && *ptr1 == 42;
+
+    std::shared_ptr<int> ptr2 = std::make_shared<int>(14);
+    aptr.store(ptr2);
+
+    std::shared_ptr<int> ptr3 = aptr.load();
+    b = b && *ptr3 == 14;
+
+    auto out = aptr.exchange(ptr1);
+    b = b && out == ptr3;
+
+    auto expected = ptr1;
+    b = b && aptr.compare_exchange_strong(expected, ptr2);
+
+    expected = ptr3;
+    b = b && aptr.compare_exchange_strong(expected, ptr2);
+  }
+
+  // Hana's atomic_weak_test()
+  {
+    std::atomic<std::weak_ptr<int>> wptr{};
+
+    {
+      std::shared_ptr<int> sptr = std::make_shared<int>(42);
+      wptr.store(sptr);
+      std::shared_ptr<int> sptr2 = wptr.load().lock();
+      b = b && sptr2 != nullptr;
+      b = b && *sptr2 == 42;
+    }
+
+    std::shared_ptr<int> sptr3 = wptr.load().lock();
+    b = b && sptr3 == nullptr;
+  }
+
   return b;
 }
 

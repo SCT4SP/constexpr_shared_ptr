@@ -684,6 +684,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_refcount._M_swap_unlock(__r._M_refcount, __o);
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(value_type& __expected, value_type __desired,
 			      memory_order __o, memory_order __o2) noexcept
@@ -787,6 +788,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(nullptr_t) noexcept
       { store(nullptr); }
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       exchange(shared_ptr<_Tp> __desired,
 	       memory_order __o = memory_order_seq_cst) noexcept
@@ -795,6 +797,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __desired;
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(shared_ptr<_Tp>& __expected,
 			      shared_ptr<_Tp> __desired,
@@ -803,6 +806,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return _M_impl.compare_exchange_strong(__expected, __desired, __o, __o2);
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(value_type& __expected, value_type __desired,
 			      memory_order __o = memory_order_seq_cst) noexcept
@@ -887,6 +891,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       atomic(const atomic&) = delete;
       void operator=(const atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       weak_ptr<_Tp>
       load(memory_order __o = memory_order_seq_cst) const noexcept
       { return _M_impl.load(__o); }
@@ -894,6 +899,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator weak_ptr<_Tp>() const noexcept
       { return _M_impl.load(memory_order_seq_cst); }
 
+      _GLIBCXX26_CONSTEXPR
       void
       store(weak_ptr<_Tp> __desired,
 	    memory_order __o = memory_order_seq_cst) noexcept

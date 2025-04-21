@@ -2210,6 +2210,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	: _M_ptr(__r._M_ptr), _M_refcount(__r._M_refcount)
 	{ }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_ptr(__weak_ptr&& __r) noexcept
       : _M_ptr(__r._M_ptr), _M_refcount(std::move(__r._M_refcount))
       { __r._M_ptr = nullptr; }

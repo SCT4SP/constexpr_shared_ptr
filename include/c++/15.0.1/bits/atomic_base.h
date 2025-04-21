@@ -88,7 +88,13 @@ auto ce__atomic_fetch_add(auto *ptr, auto val, int memorder)
 _GLIBCXX26_CONSTEXPR
 auto ce__atomic_fetch_sub(auto *ptr, auto val, int memorder)
 {
-  if consteval { auto tmp = *ptr; *ptr -= val; return tmp; }
+  if consteval {
+    if constexpr (std::is_pointer_v<std::decay_t<decltype(*ptr)>>) {
+      auto tmp = *ptr; *ptr -= val/sizeof(**ptr); return tmp;
+    } else {
+      auto tmp = *ptr; *ptr -= val;               return tmp;
+    }
+  }
   else         { return __atomic_fetch_sub(ptr, val, memorder); }
 }
 _GLIBCXX26_CONSTEXPR
@@ -114,7 +120,7 @@ _GLIBCXX26_CONSTEXPR
 void
 ce__atomic_wait_address_v(const _Tp* __addr, _Tp __old, _ValFn __vfn) noexcept
 {
-  if consteval { if (*__addr == __old) { while(false); } } // infinite loop
+  if consteval { if (*__addr == __old) { while(true); } } // infinite loop
   else         { std::__atomic_wait_address_v(__addr, __old, __vfn); }
 }
 template<typename _Tp>
@@ -993,26 +999,29 @@ auto ce__atomic_exchange_n(auto *ptr, auto val, int memorder)
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       wait(__pointer_type __old,
 	   memory_order __m = memory_order_seq_cst) const noexcept
       {
-	std::__atomic_wait_address_v(&_M_p, __old,
+	ce__atomic_wait_address_v(&_M_p, __old,
 				     [__m, this]
 				     { return this->load(__m); });
       }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_one() const noexcept
-      { std::__atomic_notify_address(&_M_p, false); }
+      { ce__atomic_notify_address(&_M_p, false); }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_all() const noexcept
-      { std::__atomic_notify_address(&_M_p, true); }
+      { ce__atomic_notify_address(&_M_p, true); }
 
       // TODO add const volatile overload
 #endif // __glibcxx_atomic_wait
@@ -1028,10 +1037,11 @@ auto ce__atomic_exchange_n(auto *ptr, auto val, int memorder)
 		memory_order __m = memory_order_seq_cst) volatile noexcept
       { return __atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_sub(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_sub(&_M_p, _S_type_size(__d), int(__m)); }
+      { return ce__atomic_fetch_sub(&_M_p, _S_type_size(__d), int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_sub(ptrdiff_t __d,

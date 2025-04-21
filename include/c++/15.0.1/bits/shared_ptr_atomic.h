@@ -572,15 +572,33 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #if __glibcxx_atomic_wait
 	// Precondition: caller holds lock!
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_wait_unlock(memory_order __o) const noexcept
 	{
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  if consteval {
+	    while(true); // if we are waiting, no one will change it as constant evaluation is single threaded environment
+	  }
+#endif
+
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  auto __v = _M_val.load(memory_order_relaxed);
+	  unlock(memory_order_relaxed);
+#else
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  auto __v = _M_val.fetch_sub(1, memory_order_relaxed);
 	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
+#endif
+
+#if defined(__cpp_lib_constexpr_shared_ptr)
+	  _M_val.wait(reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__v) & ~_S_lock_bit), __o);
+#else
 	  _M_val.wait(__v & ~_S_lock_bit, __o);
+#endif
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	void
 	notify_one() noexcept
 	{
@@ -589,6 +607,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX_TSAN_MUTEX_POST_SIGNAL(&_M_val);
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	void
 	notify_all() noexcept
 	{
@@ -700,12 +719,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_refcount.unlock(memory_order_relaxed);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_one() noexcept
       {
 	_M_refcount.notify_one();
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_all() noexcept
       {
@@ -826,12 +847,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_impl.wait(std::move(__old), __o);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_one() noexcept
       {
 	_M_impl.notify_one();
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_all() noexcept
       {

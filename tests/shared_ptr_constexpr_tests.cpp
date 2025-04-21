@@ -923,7 +923,7 @@ bool atomic_tests_basic()
 
   ai0.store(43);
   int i = ai0.load();
-  ai0.wait(44); // change to 43 for a compile-time infinite loop
+  ai0.wait(44); // change to 43 for non-termination
   ai0.notify_one();
   ai0.notify_all();
   b = b && i == 43;
@@ -959,8 +959,6 @@ bool atomic_smart_ptr_tests()
   std::atomic<std::shared_ptr<int>>   asp2{sp1};
   std::shared_ptr<int> sp4 = asp1; // conversion operator
 
-/*
-
   asp1.store(asp2.load());
   b = b && 42 == *asp1.load() && 42 == *asp2.load();
 
@@ -968,9 +966,11 @@ bool atomic_smart_ptr_tests()
   std::shared_ptr<int[]> sp3{parr};
   std::atomic<std::shared_ptr<int[]>> asp3{sp3};
   b = b && 10 == asp3.load()[0];
-*/
 
-  //asp2.wait(sp2); // can't get non-termination
+  asp2.wait(sp0);
+  //asp2.wait(sp2); // non-termination
+  asp2.notify_one();
+  asp2.notify_all();
 
   return b;
 }

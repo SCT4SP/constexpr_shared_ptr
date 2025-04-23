@@ -92,8 +92,8 @@
 \newcommand{\fullref}[1]{\ref{#1} \nameref{#1}}
 
 \newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
-\newcommand*{\upstreamcommit}{4dd513d}
-\newcommand*{\forkcommit}{4b5d3cf}
+\newcommand*{\upstreamcommit}{05300d7}
+\newcommand*{\forkcommit}{08406d0}
 
 \date{}
 \title{\texttt{constexpr std::shared\_ptr} and friends}
@@ -111,8 +111,8 @@
 
 \begin{flushright}
   \begin{tabular}{ll}
-  Document \#:&P3037R5\\
-  Date:       &\date{2025-03-27}\\
+  Document \#:&P3037R6\\
+  Date:       &\date{2025-04-23}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -131,6 +131,11 @@
 \section{Revision History}
 
 \begin{itemize}
+\item R6 2025-04-23
+  \begin{itemize}
+  \item Added discussion on implementation of atomic partial specialisations (Section \ref{sec:atom_spec})
+  \item Added discussion on implementation of smart pointer adapters (Section \ref{sec:adapt})
+  \end{itemize}
 \item R5 2025-03-27
   \begin{itemize}
   \item Changed proposal title for clarity based on LEWG feedback in Hagenberg
@@ -178,7 +183,9 @@ and with no remaining technical obstacles, parity between runtime and
 compile-time support for smart pointers should reflect the increased maturity
 of language support for constant expression evaluation.  We therefore propose
 that \texttt{std::shared\_ptr} and appropriate classes and template member
-functions from \wgxxi{smartptr} permit \texttt{constexpr} evaluation.
+functions from \wgxxi{smartptr}, as well as smart pointer specialisations
+of \texttt{std::atomic} from \wgxxi{util.smartptr.atomic} permit
+\texttt{constexpr} evaluation.
 
 \section{Motivation and Scope}
 
@@ -239,8 +246,8 @@ as \texttt{constexpr}. Yet \texttt{constexpr} implementations of
 recognising that as constant expressions must be evaluated by a single thread,
 execution can safely skip calls to atomic functions through the
 predication of \texttt{std::is\_constant\_evaluated} (or \texttt{if
-consteval}). For example, here is a modified function from GCC's libstdc++,
-called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
+consteval}). For example, here is a modified function from the GNU C++ library
+(libstdc++), called from \texttt{std::shared\_ptr::use\_count()} and elsewhere:
 
 %The existing \texttt{std::shared\_ptr} class can operate within a multithreaded
 %runtime environment. A number of its member functions may therefore be defined
@@ -271,6 +278,7 @@ functionality in \texttt{std::atomic} (and \texttt{std::atomic\_ref}) for
 C++26; and so code such as that above will soon be unnecessary.
 
 \subsubsection{Atomic Partial Specialisations}
+\label{sec:atom_spec}
 
 Support for the partial specialisations of \texttt{std::atomic} for
 \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr} were not included in
@@ -279,21 +287,22 @@ Support for the partial specialisations of \texttt{std::atomic} for
 \texttt{constexpr} whenever \texttt{std::shared\_ptr} is supported in
 \texttt{constexpr}. We here propose \texttt{constexpr} support for the partial
 specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr} and
-\texttt{std::weak\_ptr}, as specified in \wgxxi{util.smartptr.atomic.shared}
-and \wgxxi{util.smartptr.atomic.weak}.
+\texttt{std::weak\_ptr}, hitherto specified in
+\wgxxi{util.smartptr.atomic.shared} and \wgxxi{util.smartptr.atomic.weak}.
 
 Runtime implementations of \texttt{std::atomic} smart pointer specialisations,
-including those within the GNU C++ Library (libstdc++), toggle the least
+including those within libstdc++, toggle the least
 significant bit (LSB) of a pointer to a counting object (e.g.
 \texttt{\_Sp\_counted\_base<>}) as an efficient lock semaphore to facilitate
 atomic operations. Rather than an actual pointer, this counting object's
 address is often stored within a \texttt{uintptr\_t} variable; and then cast to
-the correct pointer (via \texttt{reinterpret\_cast}) when required. Only the
-\texttt{reinterpret\_cast} presents a problem during constant evaluation; and
-consequently our library-only libstdc++ implementation instead stores a standard
-typed pointer to the counting object. At runtime, the casting then occurs before
-the LSB toggle; while during constant evaluation there is no need for locking,
-as this is a single threaded environment, and so no cast is required.
+the correct pointer type (via \texttt{reinterpret\_cast}) when required. Only
+the \texttt{reinterpret\_cast} presents a problem during constant evaluation;
+and consequently our library-only libstdc++ implementation instead stores a
+standard typed pointer to the counting object. At runtime, the casting then
+occurs before the LSB toggle; while during constant evaluation there is no need
+for locking, as this is a single threaded environment, and so no cast is
+required.
 
 \subsection{Two Memory Allocations}
 
@@ -389,6 +398,7 @@ static_assert(uptr_compare());
 \end{lstlisting}
 
 \subsection{Smart Pointer Adaptors}
+\label{sec:adapt}
 
 C++23 introduced the smart pointer adaptors: \texttt{std::out\_ptr\_t} and
 \texttt{std::inout\_ptr\_t}; as specified in \wgxxi{smartptr.adapt}. Objects of
@@ -433,7 +443,7 @@ used to obtain a \texttt{void**} from a \texttt{T**}; via an intermediate
 \end{lstlisting}
 
 An implementation \emph{suitable} for use during constant evaluation adds two
-new \texttt{void*} data members outlined above (\texttt{\_M\_pv} and
+new \texttt{void*} data members; outlined above (\texttt{\_M\_pv} and
 \texttt{\_M\_p\_orig}). Both pointers are initialised in the adaptor's
 constructor to the smart pointer's stored pointer (\texttt{\_M\_p} in this
 case). The address of the first (\texttt{\_M\_pv}) can be returned by the
@@ -445,7 +455,7 @@ partial specialisation for raw (smart) pointers is shown below.
 % Destructor for the partial specialization for raw pointers.
 \begin{lstlisting}[language=cpp]
 #ifdef __cpp_lib_constexpr_shared_ptr
-_GLIBCXX26_CONSTEXPR
+constexpr
 ~_Impl()
 {
   if (_M_pv != _M_p_orig)
@@ -469,7 +479,9 @@ instance the C++ community will be served better by a future update; when their
 constant evaluation becomes possible.
 
 \begin{itemize}
-  \item \wgxxi{util.smartptr.hash}: The \texttt{operator()} member of the class template specialisations for \linebreak \texttt{std::hash<std::unique\_ptr<T,D>>} and \texttt{std::hash<std::shared\_ptr<T>>} cannot be defined according to the \emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}). (A pointer cannot, during constant evaluation, be converted to an \texttt{std::size\_t} using \texttt{reinterpret\_cast}; or otherwise.)
+  \item \wgxxi{util.smartptr.hash}: The \texttt{operator()} member of the class template specialisations for \linebreak
+\texttt{std::hash<std::unique\_ptr<T,D>}\texttt{>} and
+\texttt{std::hash<std::shared\_ptr<T>}\texttt{>} cannot be defined according to the \emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}). (A pointer cannot, during constant evaluation, be converted to an \texttt{std::size\_t} using \texttt{reinterpret\_cast}; or otherwise.)
 
   \item \wgxxi{util.smartptr.owner.hash}: The two \texttt{operator()} member functions of the recently adopted \texttt{owner\_hash} class, also cannot be defined according to the \emph{Cpp17Hash} requirements.
 
@@ -482,7 +494,7 @@ constant evaluation becomes possible.
 \end{itemize}
 
 We also \emph{do not} propose any specification change for the overloads of
-\texttt{operator<<} for \texttt{std::shared\_ptr} and
+\texttt{operator<}\texttt{<} for \texttt{std::shared\_ptr} and
 \texttt{std::unique\_ptr}, from \wgxxi{util.smartptr.shared.io} and
 \wgxxi{unique.ptr.io}. Unlike the functions above, a \texttt{constexpr}
 implementation for the overloads could today use a vendor-specific extension;

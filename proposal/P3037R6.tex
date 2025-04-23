@@ -388,6 +388,60 @@ constexpr bool uptr_compare()
 static_assert(uptr_compare());
 \end{lstlisting}
 
+\subsection{Smart Pointer Adaptors}
+
+C++23 introduced the smart pointer adaptors: \texttt{std::out\_ptr\_t} and
+\texttt{std::inout\_ptr\_t}; as specified in \wgxxi{smartptr.adapt}. Objects of
+these class templates adapt types such as smart pointers for functions that use
+output pointer parameters. Smart pointer adaptors are intended for use only as
+temporary objects, often created using the helper functions
+\texttt{std::out\_ptr} or \texttt{std::inout\_ptr}, and typically created and
+destroyed as arguments to a function call such as \texttt{f} below:
+
+\begin{lstlisting}[language=cpp]
+constexpr bool sptr_out_ptr()
+{
+  std::shared_ptr<int> sp;
+  auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+  f(std::out_ptr(sp, std::default_delete<int>{}));
+  return 42 == *sp;
+}
+
+static_assert(sptr_out_ptr());
+\end{lstlisting}
+
+The \texttt{f} function above expects a \texttt{void**} argument, and this is
+obtained using the \texttt{operator void**} conversion operator member of the
+\texttt{std::out\_ptr\_t} temporary; an \texttt{operator int**}
+conversion operator is also available.
+
+The pointer value returned by a conversion operator, at runtime, holds the
+address of a pointer reference member of the relevant smart pointer adaptor
+temporary. This member references the pointer managed by the smart pointer.
+At runtime, a \texttt{reinterpret\_cast} can be used to obtain a
+\texttt{void**} from a \texttt{Pointer*}.
+
+\begin{lstlisting}[language=cpp]
+  _Tp*& _M_p;
+#ifdef __cpp_lib_constexpr_shared_ptr
+  void* _M_pv;
+  void* _M_p_orig;
+#endif
+};
+\end{lstlisting}
+
+% Destructor for the partial specialization for raw pointers.
+\begin{lstlisting}[language=cpp]
+#ifdef __cpp_lib_constexpr_shared_ptr
+_GLIBCXX26_CONSTEXPR
+~_Impl()
+{
+  if (_M_pv != _M_p_orig)
+    _M_p = static_cast<_Tp*>(_M_pv);
+}
+\end{lstlisting}
+
+
 \subsection{Maybe Not Now, But Soon}
 \label{sec:mnnbs}
 

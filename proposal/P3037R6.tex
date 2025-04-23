@@ -402,7 +402,7 @@ destroyed as arguments to a function call such as \texttt{f} below:
 constexpr bool sptr_out_ptr()
 {
   std::shared_ptr<int> sp;
-  auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{42}; };
+  auto f = [&](void **pp) { *pp = new int{42}; };
   f(std::out_ptr(sp, std::default_delete<int>{}));
   return 42 == *sp;
 }
@@ -415,11 +415,13 @@ obtained using the \texttt{operator void**} conversion operator member of the
 \texttt{std::out\_ptr\_t} temporary; an \texttt{operator int**}
 conversion operator is also available.
 
-The pointer value returned by a conversion operator, at runtime, holds the
-address of a pointer reference member of the relevant smart pointer adaptor
-temporary. This member references the pointer managed by the smart pointer.
-At runtime, a \texttt{reinterpret\_cast} can be used to obtain a
-\texttt{void**} from a \texttt{Pointer*}.
+In runtime implementations, the pointer value returned by a conversion
+operator, holds the address of a pointer reference member (e.g.
+\texttt{\_M\_p}) of the smart pointer adaptor temporary. This member references
+the smart pointer's stored pointer. A \texttt{reinterpret\_cast} may then be
+used to obtain a \texttt{void**} from a \texttt{T**}; via an intermediate
+\texttt{reinterpret\_cast} to a \texttt{void*}. The second cast, from
+\texttt{void*} to \texttt{void**}, is not permitted during constant evaluation.
 
 \begin{lstlisting}[language=cpp]
   _Tp*& _M_p;
@@ -430,6 +432,16 @@ At runtime, a \texttt{reinterpret\_cast} can be used to obtain a
 };
 \end{lstlisting}
 
+An implementation \emph{suitable} for use during constant evaluation adds two
+new \texttt{void*} data members outlined above (\texttt{\_M\_pv} and
+\texttt{\_M\_p\_orig}). Both pointers are initialised in the adaptor's
+constructor to the smart pointer's stored pointer (\texttt{\_M\_p} in this
+case). The address of the first (\texttt{\_M\_pv}) can be returned by the
+\texttt{operator void**} conversion operator. The destructor can then update
+\texttt{\_M\_p} if it is found that \texttt{\_M\_pv} differs from
+\texttt{\_M\_p\_orig} (akin to a \texttt{bool} flag). The destructor for the
+partial specialisation for raw (smart) pointers is shown below.
+
 % Destructor for the partial specialization for raw pointers.
 \begin{lstlisting}[language=cpp]
 #ifdef __cpp_lib_constexpr_shared_ptr
@@ -439,8 +451,12 @@ _GLIBCXX26_CONSTEXPR
   if (_M_pv != _M_p_orig)
     _M_p = static_cast<_Tp*>(_M_pv);
 }
+#endif
 \end{lstlisting}
 
+This approach aligns with the specified preconditions for the conversion
+operators (\wgxxi{smartptr.adapt}), which states that only one of the two
+conversion operators should be called on a single adaptor temporary.
 
 \subsection{Maybe Not Now, But Soon}
 \label{sec:mnnbs}

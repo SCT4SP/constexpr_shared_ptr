@@ -272,21 +272,28 @@ C++26; and so code such as that above will soon be unnecessary.
 
 \subsubsection{Atomic Partial Specialisations}
 
-Support for the partial specialisations of
-\texttt{std::atomic} for \texttt{std::shared\_ptr} and \texttt{std::weak\_ptr}
-were not included in \cite{P3309R3}. During discussions on that paper, it was
-proposed that \texttt{atomic<shared\_ptr>} should be supported in
-\texttt{constexpr} whenever \texttt{shared\_ptr} is supported in
-\texttt{constexpr} (whichever paper lands second should have this change). We
-consequently here (the second paper) propose \texttt{constexpr} support for the
-partial specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr}
-and \texttt{std::weak\_ptr}, as specified in
-\wgxxi{util.smartptr.atomic.shared} and \wgxxi{util.smartptr.atomic.weak}.
+Support for the partial specialisations of \texttt{std::atomic} for
+\texttt{std::shared\_ptr} and \texttt{std::weak\_ptr} were not included in
+\cite{P3309R3}. During discussions on that paper, it was proposed that
+\texttt{std::atomic<std::shared\_ptr>} should be supported in
+\texttt{constexpr} whenever \texttt{std::shared\_ptr} is supported in
+\texttt{constexpr}. We here propose \texttt{constexpr} support for the partial
+specialisations of \texttt{std::atomic} for \texttt{std::shared\_ptr} and
+\texttt{std::weak\_ptr}, as specified in \wgxxi{util.smartptr.atomic.shared}
+and \wgxxi{util.smartptr.atomic.weak}.
 
-Existing runtime implementations use
-an \texttt{uintptr\_t} to store the address bits of the
-
-the least significant bit of
+Runtime implementations of \texttt{std::atomic} smart pointer specialisations,
+including those within the GNU C++ Library (libstdc++), toggle the least
+significant bit (LSB) of a pointer to a counting object (e.g.
+\texttt{\_Sp\_counted\_base<>}) as an efficient lock semaphore to facilitate
+atomic operations. Rather than an actual pointer, this counting object's
+address is often stored within a \texttt{uintptr\_t} variable; and then cast to
+the correct pointer (via \texttt{reinterpret\_cast}) when required. Only the
+\texttt{reinterpret\_cast} presents a problem during constant evaluation; and
+consequently our library-only libstdc++ implementation instead stores a standard
+typed pointer to the counting object. At runtime, the casting then occurs before
+the LSB toggle; while during constant evaluation there is no need for locking,
+as this is a single threaded environment, and so no cast is required.
 
 \subsection{Two Memory Allocations}
 
@@ -419,7 +426,7 @@ language features.
 
 \section{Implementation}
 
-An implementation by the first author, based on the GNU C++ Library (libstdc++)
+An implementation by the first author, based on libstdc++
 can be found \href{https://github.com/SCT4SP/constexpr_shared_ptr}{here}. A
 comprehensive test suite is included there within
 \texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash

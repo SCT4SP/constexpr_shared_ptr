@@ -954,6 +954,10 @@ bool atomic_smart_ptr_tests()
   std::shared_ptr<int> sp0, sp1{p}, sp2 = sp1;
 
   std::atomic<std::shared_ptr<int>>   asp0;
+  asp0 = nullptr;
+  asp0 = sp0;
+  asp0 = sp0;
+  asp0 = nullptr;
   std::atomic<std::shared_ptr<int>>   asp1{sp0};
   asp1 = sp0;
   std::atomic<std::shared_ptr<int>>   asp2{sp1};

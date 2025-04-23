@@ -619,7 +619,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       private:
 #if defined(__cpp_lib_constexpr_shared_ptr)
-	mutable __atomic_base<pointer> _M_val{0};
+	mutable __atomic_base<pointer> _M_val{nullptr};
 #else
 	mutable __atomic_base<uintptr_t> _M_val{0};
 #endif
@@ -784,6 +784,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
       // 3893. LWG 3661 broke atomic<shared_ptr<T>> a; a = nullptr;
+      _GLIBCXX26_CONSTEXPR
       void
       operator=(nullptr_t) noexcept
       { store(nullptr); }

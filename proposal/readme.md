@@ -1,8 +1,10 @@
 ```
-pdflatex P3037R5.tex
-pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
+pdflatex P3037R6.tex
+pdftk A=P3037R6.pdf B=std-diff.pdf cat A1-7 B A39-end output output.pdf
 mv output.pdf generated/P30375.pdf
 ```
+
+For the earlier markdown approach:
 
 ```
 # sudo apt-get install curl pandoc python3-venv python3-requests texlive-xetex

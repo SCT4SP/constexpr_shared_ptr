@@ -27,12 +27,14 @@ potentially be used, along with a recent version of GCC (installed here at
 $ $CXX -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64 -std=c++26 -Winvalid-constexpr -fsanitize=address -I $PWD/include/c++/15.0.1 -I $PWD/include/c++/15.0.1/x86_64-pc-linux-gnu main.cpp
 ```
 
-Most of the changes required for this implementation are within two files:
+Most of the changes required for this implementation are within five files:
 
 ```
-include/c++/15.0.1/bits/shared_ptr.h
-include/c++/15.0.1/bits/shared_ptr_base.h
 include/c++/15.0.1/bits/atomic_base.h
+include/c++/15.0.1/bits/out_ptr.h
+include/c++/15.0.1/bits/shared_ptr.h
+include/c++/15.0.1/bits/shared_ptr_atomic.h
+include/c++/15.0.1/bits/shared_ptr_base.h
 ```
 
 The foot of `include/c++/15.0.1/bits/version.h` includes definition of a
@@ -65,15 +67,19 @@ The following `git` command shows the files which differ between the
 unmodified `include` directory, obtained after install of a recent GCC build.
 
 ```
-$ git diff --name-only master constexpr -- include
-include/c++/15.0.1/bits/allocated_ptr.h
-include/c++/15.0.1/bits/atomic_base.h
-include/c++/15.0.1/bits/exception.h
-include/c++/15.0.1/bits/shared_ptr.h
-include/c++/15.0.1/bits/shared_ptr_base.h
-include/c++/15.0.1/bits/stl_function.h
-include/c++/15.0.1/bits/unique_ptr.h
-include/c++/15.0.1/bits/version.h
-include/c++/15.0.1/compare
-include/c++/15.0.1/ext/atomicity.h
+$ git diff --stat master constexpr -- include
+ include/c++/15.0.1/atomic                   |   5 +
+ include/c++/15.0.1/bits/allocated_ptr.h     |   7 +
+ include/c++/15.0.1/bits/atomic_base.h       | 139 +++++++++++++---
+ include/c++/15.0.1/bits/exception.h         |  22 +++
+ include/c++/15.0.1/bits/out_ptr.h           | 130 ++++++++++++++-
+ include/c++/15.0.1/bits/shared_ptr.h        | 238 +++++++++++++++++++++++++++-
+ include/c++/15.0.1/bits/shared_ptr_atomic.h | 125 ++++++++++++++-
+ include/c++/15.0.1/bits/shared_ptr_base.h   | 219 +++++++++++++++++++++++++
+ include/c++/15.0.1/bits/stl_function.h      |   4 +
+ include/c++/15.0.1/bits/unique_ptr.h        |   1 +
+ include/c++/15.0.1/bits/version.h           |  11 ++
+ include/c++/15.0.1/compare                  |  12 ++
+ include/c++/15.0.1/ext/atomicity.h          |   9 ++
+ 13 files changed, 899 insertions(+), 23 deletions(-)
 ```

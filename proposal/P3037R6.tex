@@ -112,7 +112,7 @@
 \begin{flushright}
   \begin{tabular}{ll}
   Document \#:&P3037R6\\
-  Date:       &\date{2025-04-23}\\
+  Date:       &\date{2025-04-24}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -131,10 +131,11 @@
 \section{Revision History}
 
 \begin{itemize}
-\item R6 2025-04-23
+\item R6 2025-04-24
   \begin{itemize}
   \item Added discussion on implementation of atomic partial specialisations (Section \ref{sec:atom_spec})
   \item Added discussion on implementation of smart pointer adapters (Section \ref{sec:adapt})
+  \item Added poll result from the LEWG meeting in Hagenberg
   \end{itemize}
 \item R5 2025-03-27
   \begin{itemize}
@@ -520,6 +521,30 @@ Library is also available: on Github
 \href{https://github.com/hanickadot/llvm-project/tree/P3309-constexpr-atomic-and-atomic-ref}{here}
 (via commit 23217d0); and with a corresponding Compiler Explorer instance
 \href{https://compiler-explorer.com/z/8cj7nc1no}{here}.
+
+\section{Polls}
+
+\subsection{LEWG, Hagenberg, 2025}
+
+\textbf{Champion}: Hana Dusíková\newline
+\textbf{Chair}: Andreas Weis / Inbal Levi\newline
+\textbf{Minute Taker}: Guy Davidson\newline
+
+\textbf{Summary}
+
+\textbf{POLL}: Forward P3037R4 to LWG for C++26.
+
+\begin{tabular}{|c|c|c|c|c|}
+  \hline
+  \textbf{SF} & \textbf{F} & \textbf{N} & \textbf{A} & \textbf{SA} \\
+  \hline
+  9 & 7 & 4 & 0 & 0  \\
+  \hline
+\end{tabular}
+
+\textbf{Attendance}: 18 (IP) + 7 (R)\newline
+\textbf{Author's Position}: SF (both)\newline
+\textbf{Outcome}: Strong consensus in favour\newline
 
 \section{Proposed Wording}
 \label{sec:wording}

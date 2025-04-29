@@ -1,7 +1,7 @@
 ```
 pdflatex P3037R6.tex
 pdftk A=P3037R6.pdf B=std-diff.pdf cat A1-7 B A39-end output output.pdf
-mv output.pdf generated/P30375.pdf
+mv output.pdf generated/P30376.pdf
 ```
 
 For the earlier markdown approach:

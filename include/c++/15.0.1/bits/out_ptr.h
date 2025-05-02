@@ -85,11 +85,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifndef __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
+	return _M_impl._M_getv();
+#else
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
-#else
-	return _M_impl._M_getv();
 #endif
       }
 
@@ -443,11 +443,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifndef __cpp_lib_constexpr_shared_ptr
+#ifdef __cpp_lib_constexpr_shared_ptr
+	return _M_impl._M_getv();
+#else
 	_Pointer* __p = *this;
 	return static_cast<void**>(static_cast<void*>(__p));
-#else
-	return _M_impl._M_getv();
 #endif
       }
 

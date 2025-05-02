@@ -38,6 +38,10 @@
 
 #ifdef __glibcxx_out_ptr // C++ >= 23
 
+// This approach to adding the 2 [in]out_ptr conversion operators for constexpr
+// usage causes an ABI break in libstdc++, by increasing their size by 2x void*
+//   #define __abi_break_for_conv_ops // was __cpp_lib_constexpr_shared_ptr
+
 #include <tuple>
 #include <bits/ptr_traits.h>
 
@@ -85,7 +89,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	return _M_impl._M_getv();
 #else
 	_Pointer* __p = *this;
@@ -143,7 +147,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  { _M_p = nullptr; _M_pv = nullptr; _M_p_orig = nullptr; }
 #else
 	  { _M_p = nullptr; }
@@ -152,7 +156,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  { _M_pv = _M_p; _M_p_orig = _M_p; }
 #else
 	  { }
@@ -163,7 +167,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_get() const
 	  { return __builtin_addressof(const_cast<_Tp*&>(_M_p)); }
 
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -178,7 +182,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
 	  _Tp*& _M_p;
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  void* _M_pv;
 	  void* _M_p_orig;
 #endif
@@ -224,7 +228,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
 #else
 	  { _M_smart.reset();}
@@ -235,7 +239,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -250,7 +254,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
 	  _Smart& _M_smart;
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  void* _M_pv;
 	  void* _M_p_orig;
 #endif
@@ -263,7 +267,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer, _Del2>
 	{
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2&& __d)
 	  : _M_smart(__s), _M_del(std::forward<_Del2>(__d))
@@ -275,7 +279,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	  void
 	  _M_out_init()
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
 #else
 	  { _M_smart.reset(); }
@@ -286,7 +290,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
 
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -296,7 +300,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	    if (_M_pv != _M_p_orig)
 	      _M_smart._M_t._M_ptr() = static_cast<_Smart::element_type*>(_M_pv);
 #endif
@@ -307,7 +311,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	  _Smart& _M_smart;
 	  [[no_unique_address]] _Del2 _M_del;
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  void* _M_pv;
 	  void* _M_p_orig;
 #endif
@@ -341,7 +345,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			       std::forward<_Alloc>(__a));
 	    _M_smart._M_refcount._M_pi = __mem;
 
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
       _M_pv     = _M_smart._M_ptr;
       _M_p_orig = _M_smart._M_ptr;
 #endif
@@ -352,7 +356,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_get() const noexcept
 	  { return __builtin_addressof(_M_smart._M_ptr); }
 
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
@@ -362,7 +366,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
       if (_M_pv != _M_p_orig)
         _M_smart._M_ptr = static_cast<_Smart::element_type*>(_M_pv);
 #endif
@@ -376,7 +380,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
 
 	  _Smart& _M_smart;
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	  void* _M_pv;
 	  void* _M_p_orig;
 #endif
@@ -443,7 +447,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifdef __cpp_lib_constexpr_shared_ptr
+#ifdef __abi_break_for_conv_ops
 	return _M_impl._M_getv();
 #else
 	_Pointer* __p = *this;

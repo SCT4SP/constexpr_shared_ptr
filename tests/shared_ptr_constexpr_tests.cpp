@@ -1041,6 +1041,9 @@ bool inout_tests_basic()
     delete pi;
   }
 
+// future work!
+if !consteval
+{
   // raw ptr; out_ptr; void**
   {
     int i = 0;
@@ -1050,6 +1053,7 @@ bool inout_tests_basic()
     b = b && 6 == *pi;
     delete pi;
   }
+}
 
   // raw ptr; inout_ptr; int**
   {
@@ -1064,6 +1068,8 @@ bool inout_tests_basic()
     delete pi;
   }
 
+if !consteval
+{
   // raw ptr; inout_ptr; void**
   {
     int* pi = new int{7};
@@ -1076,6 +1082,7 @@ bool inout_tests_basic()
     b = b && 8 == *pi;
     delete pi;
   }
+}
 
   // unique_ptr; out_ptr; int**
   {
@@ -1085,6 +1092,8 @@ bool inout_tests_basic()
     b = b && 42 == *up;
   }
 
+if !consteval
+{
   // unique_ptr; out_ptr; void**
   {
     std::unique_ptr<int, decltype(del)> up;
@@ -1092,6 +1101,7 @@ bool inout_tests_basic()
     f(std::out_ptr(up));
     b = b && 42 == *up;
   }
+}
 
   // shared_ptr; out_ptr; int**
   {
@@ -1101,6 +1111,8 @@ bool inout_tests_basic()
     b = b && 42 == *sp;
   }
 
+if !consteval
+{
   // shared_ptr; out_ptr; void**
   {
     std::shared_ptr<int> sp;
@@ -1108,6 +1120,7 @@ bool inout_tests_basic()
     f(std::out_ptr(sp, del));
     b = b && 42 == *sp;
   }
+}
 
   // n.b. shared_ptr cannot be used with inout_ptr
 
@@ -1123,6 +1136,8 @@ bool inout_tests_basic()
     b = b && 43 == *up;
   }
 
+if !consteval
+{
   // unique_ptr; inout_ptr; void**
   {
     std::unique_ptr<int, decltype(del)> up{new int{42}};
@@ -1134,6 +1149,7 @@ bool inout_tests_basic()
     f(std::inout_ptr(up, del));
     b = b && 43 == *up;
   }
+}
 
   auto delA = [](auto* p) { delete [] p; };
 

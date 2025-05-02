@@ -93,7 +93,7 @@
 
 \newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
 \newcommand*{\upstreamcommit}{05300d7}
-\newcommand*{\forkcommit}{987149c}
+\newcommand*{\forkcommit}{fb46090}
 
 \date{}
 \title{\texttt{constexpr std::shared\_ptr} and friends}
@@ -111,8 +111,8 @@
 
 \begin{flushright}
   \begin{tabular}{ll}
-  Document \#:&P3037R7\\
-  Date:       &\date{2025-05-01}\\
+  Document \#:&P3037R6\\
+  Date:       &\date{2025-05-02}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -131,15 +131,11 @@
 \section{Revision History}
 
 \begin{itemize}
-\item R7 2025-05-01
-  \begin{itemize}
-  \item Updated discussion on implementation of smart pointer adaptors (Section \ref{sec:adapt})
-  \item Removed \texttt{constexpr} specifier from wording of smart pointer adaptor conversion operators
-  \end{itemize}
-\item R6 2025-04-24
+\item R6 2025-05-02
   \begin{itemize}
   \item Added discussion on implementation of atomic partial specialisations (Section \ref{sec:atom_spec})
   \item Added discussion on implementation of smart pointer adaptors (Section \ref{sec:adapt})
+  \item Removed \texttt{constexpr} specifier from wording of \texttt{void**} smart pointer adaptor conversion operators following LWG meeting
   \item Added poll result from the LEWG meeting in Hagenberg
   \end{itemize}
 \item R5 2025-03-27
@@ -475,11 +471,14 @@ operators (\wgxxi{smartptr.adapt}), which states that only one of the two
 conversion operators should be called on a single adaptor temporary.
 
 A significant obstacle to this implementation strategy, is that it would cause
-an ABI break for libstdc++: the addition of the two \texttt{void*} members
-increasing the smart pointer adaptor object sizes relative to those in the
-current version. We therefore do not propose adding the \texttt{constexpr}
-specifier to the conversion operators of \texttt{std::out\_ptr} or
-\texttt{std::inout\_ptr}.
+an ABI break for libstdc++; the addition of the two \texttt{void*} members
+increasing the smart pointer adaptor object sizes, relative to those in the
+current version. We do not request changes requiring such an implementation.
+Consequently, we propose that of the two conversion operators within each of
+the two pointer adaptors (\texttt{std::out\_ptr} and \texttt{std::inout\_ptr}),
+only the typed (\texttt{Pointer*}) version should receive the
+\texttt{constexpr} specifier; the \texttt{void**} version should remain as it
+is.
 
 \subsection{Maybe Not Now, But Soon}
 \label{sec:mnnbs}

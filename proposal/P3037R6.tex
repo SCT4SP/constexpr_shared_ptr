@@ -93,7 +93,7 @@
 
 \newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
 \newcommand*{\upstreamcommit}{05300d7}
-\newcommand*{\forkcommit}{08406d0}
+\newcommand*{\forkcommit}{fb46090}
 
 \date{}
 \title{\texttt{constexpr std::shared\_ptr} and friends}
@@ -112,7 +112,7 @@
 \begin{flushright}
   \begin{tabular}{ll}
   Document \#:&P3037R6\\
-  Date:       &\date{2025-04-24}\\
+  Date:       &\date{2025-05-02}\\
   Project:    &Programming Language C++\\
   Audience:   &Library Working Group (LWG)\\
   Reply-to:   &\author{Paul Keir}\\
@@ -131,10 +131,11 @@
 \section{Revision History}
 
 \begin{itemize}
-\item R6 2025-04-24
+\item R6 2025-05-02
   \begin{itemize}
   \item Added discussion on implementation of atomic partial specialisations (Section \ref{sec:atom_spec})
-  \item Added discussion on implementation of smart pointer adapters (Section \ref{sec:adapt})
+  \item Added discussion on implementation of smart pointer adaptors (Section \ref{sec:adapt})
+  \item Removed \texttt{constexpr} specifier from wording of \texttt{void**} smart pointer adaptor conversion operators following LWG meeting
   \item Added poll result from the LEWG meeting in Hagenberg
   \end{itemize}
 \item R5 2025-03-27
@@ -145,13 +146,13 @@
   \end{itemize}
 \item R4 2024-10-21
   \begin{itemize}
-  \item Added \texttt{constexpr} qualifier to the wording
+  \item Added \texttt{constexpr} specifier to the wording
         for \texttt{std::bad\_weak\_ptr} with \cite{P3068R6}
   \item Updated ClangOz reference in motivation
   \end{itemize}
 \item R3 2024-09-03
   \begin{itemize}
-  \item Removed \texttt{constexpr} specification from
+  \item Removed \texttt{constexpr} specifier from
         \texttt{reinterpret\_pointer\_cast} (Section \ref{sec:mnnbs})
   \item Added references to \cite{P3309R3} and \cite{P3068R6}
   \item Added details of a second implementation based on libc++
@@ -159,7 +160,7 @@
 \item R2 2024-05-24
   \begin{itemize}
   \item Added wording
-  \item Removed \texttt{constexpr} specification from some
+  \item Removed \texttt{constexpr} specifier from some
         functions (Section \ref{sec:mnnbs})
   \item Removed SG7 from Audience (post 2024 Spring meeting in Tokyo)
   \end{itemize}
@@ -443,7 +444,7 @@ used to obtain a \texttt{void**} from a \texttt{T**}; via an intermediate
 };
 \end{lstlisting}
 
-An implementation \emph{suitable} for use during constant evaluation adds two
+An implementation suitable for use during constant evaluation adds two
 new \texttt{void*} data members; outlined above (\texttt{\_M\_pv} and
 \texttt{\_M\_p\_orig}). Both pointers are initialised in the adaptor's
 constructor to the smart pointer's stored pointer (\texttt{\_M\_p} in this
@@ -468,6 +469,16 @@ constexpr
 This approach aligns with the specified preconditions for the conversion
 operators (\wgxxi{smartptr.adapt}), which states that only one of the two
 conversion operators should be called on a single adaptor temporary.
+
+A significant obstacle to this implementation strategy, is that it would cause
+an ABI break for libstdc++; the addition of the two \texttt{void*} members
+increasing the smart pointer adaptor object sizes, relative to those in the
+current version. We do not request changes requiring such an implementation.
+Consequently, we propose that of the two conversion operators within each of
+the two pointer adaptors (\texttt{std::out\_ptr} and \texttt{std::inout\_ptr}),
+only the typed (\texttt{Pointer*}) version should receive the
+\texttt{constexpr} specifier; the \texttt{void**} version should remain as it
+is.
 
 \subsection{Maybe Not Now, But Soon}
 \label{sec:mnnbs}
@@ -569,7 +580,7 @@ highlighted.
 
 Thanks to all of the following:
 
-  - (In alphabetical order by last name.) Peter Dimov, Thiago Macieira, Arthur O'Dwyer, Jonathan Wakely and everyone else who contributed to the BSI Panel, SG7, LEWG, and online forum discussions.
+  - (In alphabetical order by last name.) Peter Dimov, Thiago Macieira, Arthur O'Dwyer, Jonathan Wakely and everyone else who contributed to the BSI Panel, SG7, LEWG, LWG, and online forum discussions.
 
 \section{References}
 \renewcommand{\section}[2]{}%

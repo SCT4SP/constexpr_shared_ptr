@@ -788,7 +788,7 @@ namespace weak_ptr_tests
 
     return b;
   }
-} // namespace weak_ptr_types
+} // namespace weak_ptr_tests
 
 namespace esft_tests
 {

@@ -70,7 +70,7 @@ The following `git` command shows the files which differ between the
 unmodified `include` directory, obtained after install of a recent GCC build.
 
 ```
-$ git diff --stat master constexpr -- include
+$ git diff --stat master constexpr -- :/include
  include/c++/17.0.0/atomic                   |   5 +
  include/c++/17.0.0/bits/allocated_ptr.h     |   7 +
  include/c++/17.0.0/bits/atomic_base.h       | 139 +++++++++++++---

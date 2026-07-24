@@ -36,6 +36,7 @@
 #include <bits/c++config.h>
 #include <bits/gthr.h>
 #include <bits/atomic_word.h>
+#include <bits/version.h> // __glibcxx_constexpr_memory
 #if __has_include(<sys/single_threaded.h>)
 # include <sys/single_threaded.h>
 #endif
@@ -47,10 +48,15 @@ namespace __gnu_cxx _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
+  _GLIBCXX26_CONSTEXPR
   __attribute__((__always_inline__))
   inline bool
   __is_single_threaded() _GLIBCXX_NOTHROW
   {
+#if __glibcxx_constexpr_memory >= 202506L
+    if (__builtin_is_constant_evaluated())
+      return true;
+#endif
 #ifndef __GTHREADS
     return true;
 #elif __has_include(<sys/single_threaded.h>)
@@ -109,6 +115,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 # define _GLIBCXX_UNSIGNED_ATOMIC_WORD unsigned long
 #endif
 
+  _GLIBCXX26_CONSTEXPR
   inline _Atomic_word
   __attribute__((__always_inline__))
   __exchange_and_add_single(_Atomic_word* __mem, int __val)
@@ -122,6 +129,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     return __result;
   }
 
+  _GLIBCXX26_CONSTEXPR
   inline void
   __attribute__((__always_inline__))
   __atomic_add_single(_Atomic_word* __mem, int __val)
@@ -134,6 +142,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #undef _GLIBCXX_UNSIGNED_ATOMIC_WORD
 #pragma GCC diagnostic pop
 
+  _GLIBCXX26_CONSTEXPR
   inline _Atomic_word
   __attribute__ ((__always_inline__))
   __exchange_and_add_dispatch(_Atomic_word* __mem, int __val)
@@ -144,6 +153,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       return __exchange_and_add(__mem, __val);
   }
 
+  _GLIBCXX26_CONSTEXPR
   inline void
   __attribute__ ((__always_inline__))
   __atomic_add_dispatch(_Atomic_word* __mem, int __val)

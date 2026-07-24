@@ -15,7 +15,7 @@ R1 [https://isocpp.org/files/papers/P3037R1.pdf](https://isocpp.org/files/papers
 R0 [https://isocpp.org/files/papers/P3037R0.pdf](https://isocpp.org/files/papers/P3037R0.pdf)
 
 The default `constexpr` branch contains a `constexpr` implementation of
-`std::shared_ptr` for potential inclusion in C++26. The code is based on the
+`std::shared_ptr`, now adopted for C++26 (P3037). The code is based on the
 `std::shared_ptr` implementation in GCC's libstdc++; and many of the
 `constexpr` unit tests included here are derived from the libstdc++ testsuite.
 The implementation is presented as a modification of a pre-installed set
@@ -24,22 +24,25 @@ potentially be used, along with a recent version of GCC (installed here at
 `/opt/gcc-latest/`), or Clang, via:
 
 ```
-$ $CXX -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64 -std=c++26 -Winvalid-constexpr -fsanitize=address -I $PWD/include/c++/15.0.1 -I $PWD/include/c++/15.0.1/x86_64-pc-linux-gnu main.cpp
+$ $CXX -Wl,-rpath,"/opt/gcc-latest/lib64:$LD_LIBRARY_PATH" -L /opt/gcc-latest/lib64 -std=c++26 -Winvalid-constexpr -fsanitize=address -I $PWD/include/c++/17.0.0 -I $PWD/include/c++/17.0.0/x86_64-pc-linux-gnu main.cpp
 ```
 
 Most of the changes required for this implementation are within five files:
 
 ```
-include/c++/15.0.1/bits/atomic_base.h
-include/c++/15.0.1/bits/out_ptr.h
-include/c++/15.0.1/bits/shared_ptr.h
-include/c++/15.0.1/bits/shared_ptr_atomic.h
-include/c++/15.0.1/bits/shared_ptr_base.h
+include/c++/17.0.0/bits/atomic_base.h
+include/c++/17.0.0/bits/out_ptr.h
+include/c++/17.0.0/bits/shared_ptr.h
+include/c++/17.0.0/bits/shared_ptr_atomic.h
+include/c++/17.0.0/bits/shared_ptr_base.h
 ```
 
-The foot of `include/c++/15.0.1/bits/version.h` includes definition of a
-feature macro `__cpp_lib_constexpr_shared_ptr` (set to `202503L`, i.e. the
-current month); assuming the -std=c++26 flag has been set.
+With P3037 adopted, the standard feature-test macro is `__cpp_lib_constexpr_memory`,
+bumped to `202506L`; `include/c++/17.0.0/bits/version.h` has been edited by hand
+to add this C++26 tier (upstream GCC does not yet implement the feature, so its
+generated `version.h` lacks it). The macro is defined when the -std=c++26 flag
+has been set, and the header guards here test the internal
+`__glibcxx_constexpr_memory` variant, following libstdc++ convention.
 
 One enabler of `constexpr` `shared_ptr` is the implementation of adopted
 proposal P2738 in GCC and Clang; which allows `constexpr` casting from `void*`;
@@ -68,18 +71,20 @@ unmodified `include` directory, obtained after install of a recent GCC build.
 
 ```
 $ git diff --stat master constexpr -- include
- include/c++/15.0.1/atomic                   |   5 +
- include/c++/15.0.1/bits/allocated_ptr.h     |   7 +
- include/c++/15.0.1/bits/atomic_base.h       | 139 +++++++++++++---
- include/c++/15.0.1/bits/exception.h         |  22 +++
- include/c++/15.0.1/bits/out_ptr.h           | 130 ++++++++++++++-
- include/c++/15.0.1/bits/shared_ptr.h        | 238 +++++++++++++++++++++++++++-
- include/c++/15.0.1/bits/shared_ptr_atomic.h | 125 ++++++++++++++-
- include/c++/15.0.1/bits/shared_ptr_base.h   | 219 +++++++++++++++++++++++++
- include/c++/15.0.1/bits/stl_function.h      |   4 +
- include/c++/15.0.1/bits/unique_ptr.h        |   1 +
- include/c++/15.0.1/bits/version.h           |  11 ++
- include/c++/15.0.1/compare                  |  12 ++
- include/c++/15.0.1/ext/atomicity.h          |   9 ++
- 13 files changed, 899 insertions(+), 23 deletions(-)
+ include/c++/17.0.0/atomic                   |   5 +
+ include/c++/17.0.0/bits/allocated_ptr.h     |   7 +
+ include/c++/17.0.0/bits/atomic_base.h       | 139 +++++++++++++---
+ include/c++/17.0.0/bits/out_ptr.h           | 134 +++++++++++++++-
+ include/c++/17.0.0/bits/shared_ptr.h        | 238 +++++++++++++++++++++++++++-
+ include/c++/17.0.0/bits/shared_ptr_atomic.h | 135 ++++++++++++++++
+ include/c++/17.0.0/bits/shared_ptr_base.h   | 207 ++++++++++++++++++++++++
+ include/c++/17.0.0/bits/stl_function.h      |   4 +
+ include/c++/17.0.0/bits/unique_ptr.h        |   1 +
+ include/c++/17.0.0/bits/version.h           |   9 +-
+ include/c++/17.0.0/compare                  |  11 ++
+ include/c++/17.0.0/ext/atomicity.h          |  10 ++
+ 12 files changed, 877 insertions(+), 23 deletions(-)
 ```
+
+(`bits/exception.h`, modified in earlier versions of this work, is no longer
+touched: GCC 17's libstdc++ already provides a `constexpr` `std::exception`.)

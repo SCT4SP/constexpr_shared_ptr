@@ -1427,7 +1427,14 @@
 #undef __glibcxx_want_constexpr_tuple
 
 #if !defined(__cpp_lib_constexpr_memory)
-# if (__cplusplus >  202002L) && (__cpp_constexpr_dynamic_alloc)
+// 202506L tier added by hand for P3037R6 (constexpr shared_ptr, C++26);
+// upstream version.def does not generate it yet.
+# if (__cplusplus >= 202400L) && (__cpp_constexpr_dynamic_alloc)
+#  define __glibcxx_constexpr_memory 202506L
+#  if defined(__glibcxx_want_all) || defined(__glibcxx_want_constexpr_memory)
+#   define __cpp_lib_constexpr_memory 202506L
+#  endif
+# elif (__cplusplus >  202002L) && (__cpp_constexpr_dynamic_alloc)
 #  define __glibcxx_constexpr_memory 202202L
 #  if defined(__glibcxx_want_all) || defined(__glibcxx_want_constexpr_memory)
 #   define __cpp_lib_constexpr_memory 202202L

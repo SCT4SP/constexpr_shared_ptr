@@ -412,19 +412,37 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	constexpr _Atomic_count() noexcept = default;
 
+	_GLIBCXX26_CONSTEXPR
 	explicit
 	_Atomic_count(__count_type&& __c) noexcept
+#if __glibcxx_constexpr_memory >= 202506L
+	: _M_val(__c._M_pi)
+#else
 	: _M_val(reinterpret_cast<uintptr_t>(__c._M_pi))
+#endif
 	{
 	  __c._M_pi = nullptr;
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	~_Atomic_count()
 	{
+#if __glibcxx_constexpr_memory >= 202506L
+	  // in constexpr there is no bit needed
+	  pointer __pi = _M_val.load(memory_order_relaxed);
+	  if !consteval {
+	    auto __val = reinterpret_cast<uintptr_t>(__pi);
+	    _GLIBCXX_TSAN_MUTEX_DESTROY(&_M_val);
+	    __glibcxx_assert(!(__val & _S_lock_bit));
+	    __pi = reinterpret_cast<pointer>(__val);
+	  }
+	  if (__pi)
+#else
 	  auto __val = _AtomicRef(&_M_val).load(memory_order_relaxed);
 	  _GLIBCXX_TSAN_MUTEX_DESTROY(&_M_val);
 	  __glibcxx_assert(!(__val & _S_lock_bit));
 	  if (auto __pi = reinterpret_cast<pointer>(__val))
+#endif
 	    {
 	      if constexpr (__is_shared_ptr<_Tp>)
 		__pi->_M_release();
@@ -438,9 +456,40 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	// Precondition: Caller does not hold lock!
 	// Returns the raw pointer value without the lock bit set.
+	_GLIBCXX26_CONSTEXPR
 	pointer
 	lock(memory_order __o) const noexcept
 	{
+#if __glibcxx_constexpr_memory >= 202506L
+	  // To acquire the lock we flip the LSB from 0 to 1.
+	  auto __current = _M_val.load(memory_order_relaxed);
+	  if !consteval {
+	  while (reinterpret_cast<uintptr_t>(__current) & _S_lock_bit)
+	    {
+#if __glibcxx_atomic_wait
+	      __detail::__thread_relax();
+#endif
+	      __current = _M_val.load(memory_order_relaxed);
+	    }
+
+	  _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+
+	  while (!_M_val.compare_exchange_strong(__current,
+						 reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) | _S_lock_bit),
+						 __o,
+						 memory_order_relaxed))
+	    {
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK_FAILED(&_M_val);
+#if __glibcxx_atomic_wait
+	      __detail::__thread_relax();
+#endif
+	      __current = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) & ~_S_lock_bit);
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+	    }
+	  _GLIBCXX_TSAN_MUTEX_LOCKED(&_M_val);
+	  }
+	  return __current;
+#else
 	  // To acquire the lock we flip the LSB from 0 to 1.
 
 	  _AtomicRef __aref(&_M_val);
@@ -469,36 +518,85 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    }
 	  _GLIBCXX_TSAN_MUTEX_LOCKED(&_M_val);
 	  return reinterpret_cast<pointer>(__current);
+#endif
 	}
 
 	// Precondition: caller holds lock!
+	_GLIBCXX26_CONSTEXPR
 	void
 	unlock(memory_order __o) const noexcept
 	{
+#if __glibcxx_constexpr_memory >= 202506L
+	  if consteval {
+	    return;
+	  }
+#endif
+#if __glibcxx_constexpr_memory >= 202506L
+	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
+	  auto __current = _M_val.load(memory_order_relaxed);
+	  _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+
+	  while (!_M_val.compare_exchange_strong(__current,
+						 reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) & ~_S_lock_bit),
+						 __o,
+						 memory_order_relaxed))
+	    {
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK_FAILED(&_M_val);
+#if __glibcxx_atomic_wait
+	      __detail::__thread_relax();
+#endif
+	      __current = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__current) | _S_lock_bit);
+	      _GLIBCXX_TSAN_MUTEX_TRY_LOCK(&_M_val);
+	    }
+	  _GLIBCXX_TSAN_MUTEX_LOCKED(&_M_val);
+#else
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  _AtomicRef(&_M_val).fetch_sub(1, __o);
 	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
+#endif
 	}
 
 	// Swaps the values of *this and __c, and unlocks *this.
 	// Precondition: caller holds lock!
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_swap_unlock(__count_type& __c, memory_order __o) noexcept
 	{
 	  if (__o != memory_order_seq_cst)
 	    __o = memory_order_release;
+#if __glibcxx_constexpr_memory >= 202506L
+	  if consteval {
+	    __c._M_pi = _M_val.exchange(__c._M_pi, __o);
+	    return;
+	  }
+	  auto __x = __c._M_pi;
+	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
+	  __x = _M_val.exchange(__x, __o);
+	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
+	  __c._M_pi = reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__x) & ~_S_lock_bit);
+#else
 	  auto __x = reinterpret_cast<uintptr_t>(__c._M_pi);
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  __x = _AtomicRef(&_M_val).exchange(__x, __o);
 	  _GLIBCXX_TSAN_MUTEX_POST_UNLOCK(&_M_val);
 	  __c._M_pi = reinterpret_cast<pointer>(__x & ~_S_lock_bit);
+#endif
 	}
 
 #if __glibcxx_atomic_wait
 	// Precondition: caller holds lock!
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_wait_unlock(const element_type* const& __ptr, memory_order __o) const noexcept
 	{
+#if __glibcxx_constexpr_memory >= 202506L
+	  if consteval {
+	    while(true); // if we are waiting, no one will change it as constant evaluation is single threaded environment
+	  }
+	  auto __v = _M_val.load(memory_order_relaxed);
+	  unlock(memory_order_relaxed);
+	  _M_val.wait(reinterpret_cast<pointer>(reinterpret_cast<uintptr_t>(__v) & ~_S_lock_bit), __o);
+#else
 	  auto __old_ptr = __ptr;
 	  _GLIBCXX_TSAN_MUTEX_PRE_UNLOCK(&_M_val);
 	  uintptr_t __old_pi
@@ -529,34 +627,50 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		return __new_pi != __old_pi || __new_ptr != __old_ptr;
 	      },
 	    [__o, this] { return _AtomicRef(&_M_val).load(__o); });
+#endif
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	void
 	notify_one() noexcept
 	{
 	  _GLIBCXX_TSAN_MUTEX_PRE_SIGNAL(&_M_val);
+#if __glibcxx_constexpr_memory >= 202506L
+	  _M_val.notify_one();
+#else
 	  _AtomicRef(&_M_val).notify_one();
+#endif
 	  _GLIBCXX_TSAN_MUTEX_POST_SIGNAL(&_M_val);
 	}
 
+	_GLIBCXX26_CONSTEXPR
 	void
 	notify_all() noexcept
 	{
 	  _GLIBCXX_TSAN_MUTEX_PRE_SIGNAL(&_M_val);
+#if __glibcxx_constexpr_memory >= 202506L
+	  _M_val.notify_all();
+#else
 	  _AtomicRef(&_M_val).notify_all();
+#endif
 	  _GLIBCXX_TSAN_MUTEX_POST_SIGNAL(&_M_val);
 	}
 #endif
 
       private:
+#if __glibcxx_constexpr_memory >= 202506L
+	mutable __atomic_base<pointer> _M_val{nullptr};
+#else
 	using _AtomicRef = __atomic_ref<uintptr_t>;
 	alignas(_AtomicRef::required_alignment) mutable uintptr_t _M_val{0};
+#endif
 	static constexpr uintptr_t _S_lock_bit{1};
       };
 
       element_type* _M_ptr = nullptr;
       _Atomic_count _M_refcount;
 
+      _GLIBCXX26_CONSTEXPR
       static typename _Atomic_count::pointer
       _S_add_ref(typename _Atomic_count::pointer __p)
       {
@@ -572,6 +686,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       constexpr _Sp_atomic() noexcept = default;
 
+      _GLIBCXX26_CONSTEXPR
       explicit
       _Sp_atomic(value_type __r) noexcept
       : _M_ptr(__r._M_ptr), _M_refcount(std::move(__r._M_refcount))
@@ -582,6 +697,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Sp_atomic(const _Sp_atomic&) = delete;
       void operator=(const _Sp_atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       value_type
       load(memory_order __o) const noexcept
       {
@@ -600,6 +716,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __ret;
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       swap(value_type& __r, memory_order __o) noexcept
       {
@@ -608,6 +725,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_refcount._M_swap_unlock(__r._M_refcount, __o);
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(value_type& __expected, value_type __desired,
 			      memory_order __o, memory_order __o2) noexcept
@@ -632,6 +750,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       void
       wait(value_type __old, memory_order __o) const noexcept
       {
@@ -642,12 +761,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_refcount.unlock(memory_order_relaxed);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_one() noexcept
       {
 	_M_refcount.notify_one();
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_all() noexcept
       {
@@ -674,6 +795,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // 3661. constinit atomic<shared_ptr<T>> a(nullptr); should work
       constexpr atomic(nullptr_t) noexcept : atomic() { }
 
+      _GLIBCXX26_CONSTEXPR
       atomic(shared_ptr<_Tp> __r) noexcept
       : _M_impl(std::move(__r))
       { }
@@ -681,28 +803,34 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       atomic(const atomic&) = delete;
       void operator=(const atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       load(memory_order __o = memory_order_seq_cst) const noexcept
       { return _M_impl.load(__o); }
 
+      _GLIBCXX26_CONSTEXPR
       operator shared_ptr<_Tp>() const noexcept
       { return _M_impl.load(memory_order_seq_cst); }
 
+      _GLIBCXX26_CONSTEXPR
       void
       store(shared_ptr<_Tp> __desired,
 	    memory_order __o = memory_order_seq_cst) noexcept
       { _M_impl.swap(__desired, __o); }
 
+      _GLIBCXX26_CONSTEXPR
       void
       operator=(shared_ptr<_Tp> __desired) noexcept
       { _M_impl.swap(__desired, memory_order_seq_cst); }
 
       // _GLIBCXX_RESOLVE_LIB_DEFECTS
       // 3893. LWG 3661 broke atomic<shared_ptr<T>> a; a = nullptr;
+      _GLIBCXX26_CONSTEXPR
       void
       operator=(nullptr_t) noexcept
       { store(nullptr); }
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       exchange(shared_ptr<_Tp> __desired,
 	       memory_order __o = memory_order_seq_cst) noexcept
@@ -711,6 +839,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __desired;
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(shared_ptr<_Tp>& __expected,
 			      shared_ptr<_Tp> __desired,
@@ -719,6 +848,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return _M_impl.compare_exchange_strong(__expected, __desired, __o, __o2);
       }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       compare_exchange_strong(value_type& __expected, value_type __desired,
 			      memory_order __o = memory_order_seq_cst) noexcept
@@ -755,6 +885,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       void
       wait(value_type __old,
 	   memory_order __o = memory_order_seq_cst) const noexcept
@@ -762,12 +893,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_impl.wait(std::move(__old), __o);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_one() noexcept
       {
 	_M_impl.notify_one();
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       notify_all() noexcept
       {
@@ -800,6 +933,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       atomic(const atomic&) = delete;
       void operator=(const atomic&) = delete;
 
+      _GLIBCXX26_CONSTEXPR
       weak_ptr<_Tp>
       load(memory_order __o = memory_order_seq_cst) const noexcept
       { return _M_impl.load(__o); }
@@ -807,6 +941,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator weak_ptr<_Tp>() const noexcept
       { return _M_impl.load(memory_order_seq_cst); }
 
+      _GLIBCXX26_CONSTEXPR
       void
       store(weak_ptr<_Tp> __desired,
 	    memory_order __o = memory_order_seq_cst) noexcept

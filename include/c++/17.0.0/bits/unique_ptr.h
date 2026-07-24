@@ -1047,6 +1047,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     , private __hash_empty_base<_Ptr>
 #endif
     {
+      _GLIBCXX26_CONSTEXPR
       size_t
       operator()(const _Up& __u) const
       noexcept(noexcept(std::declval<hash<_Ptr>>()(std::declval<_Ptr>())))

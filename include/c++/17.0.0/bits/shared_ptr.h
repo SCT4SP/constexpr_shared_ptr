@@ -66,10 +66,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Write the stored pointer to an ostream.
   /// @relates shared_ptr
   template<typename _Ch, typename _Tr, typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX26_CONSTEXPR
     inline std::basic_ostream<_Ch, _Tr>&
     operator<<(std::basic_ostream<_Ch, _Tr>& __os,
 	       const __shared_ptr<_Tp, _Lp>& __p)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+        return __os;
+#endif
       __os << __p.get();
       return __os;
     }
@@ -90,11 +95,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// If `__p` has a deleter of type `_Del`, return a pointer to it.
   /// @relates shared_ptr
   template<typename _Del, typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline _Del*
     get_deleter(const shared_ptr<_Tp>& __p) noexcept
     {
 #if __cpp_rtti
+#if __glibcxx_constexpr_memory >= 202506L
+      // P2738 allows constexpr casting from void* ... but not one targeting 0
+      void* __del = __p._M_get_deleter(typeid(_Del));
+      return __del ? static_cast<_Del*>(__del) : nullptr;
+#else
       return static_cast<_Del*>(__p._M_get_deleter(typeid(_Del)));
+#endif // __glibcxx_constexpr_memory >= 202506L
 #else
       return 0;
 #endif
@@ -191,6 +203,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *  @throw  std::bad_alloc, in which case @c delete @a __p is called.
        */
       template<typename _Yp, typename = _Constructible<_Yp*>>
+	_GLIBCXX26_CONSTEXPR
 	explicit
 	shared_ptr(_Yp* __p) : __shared_ptr<_Tp>(__p) { }
 
@@ -209,6 +222,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        */
       template<typename _Yp, typename _Deleter,
 	       typename = _Constructible<_Yp*, _Deleter>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(_Yp* __p, _Deleter __d)
         : __shared_ptr<_Tp>(__p, std::move(__d)) { }
 
@@ -226,6 +240,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *  The last owner will call __d(__p)
        */
       template<typename _Deleter>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(nullptr_t __p, _Deleter __d)
         : __shared_ptr<_Tp>(__p, std::move(__d)) { }
 
@@ -246,6 +261,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        */
       template<typename _Yp, typename _Deleter, typename _Alloc,
 	       typename = _Constructible<_Yp*, _Deleter, _Alloc>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(_Yp* __p, _Deleter __d, _Alloc __a)
 	: __shared_ptr<_Tp>(__p, std::move(__d), std::move(__a)) { }
 
@@ -265,6 +281,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *  The last owner will call __d(__p)
        */
       template<typename _Deleter, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(nullptr_t __p, _Deleter __d, _Alloc __a)
 	: __shared_ptr<_Tp>(__p, std::move(__d), std::move(__a)) { }
 
@@ -289,6 +306,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        * @endcode
        */
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(const shared_ptr<_Yp>& __r, element_type* __p) noexcept
 	: __shared_ptr<_Tp>(__r, __p) { }
 
@@ -317,6 +335,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        * @endcode
        */
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(shared_ptr<_Yp>&& __r, element_type* __p) noexcept
 	: __shared_ptr<_Tp>(std::move(__r), __p) { }
 #endif
@@ -329,6 +348,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        */
       template<typename _Yp,
 	       typename = _Constructible<const shared_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(const shared_ptr<_Yp>& __r) noexcept
         : __shared_ptr<_Tp>(__r) { }
 
@@ -337,6 +357,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *  @param  __r  A %shared_ptr rvalue.
        *  @post   *this contains the old value of @a __r, @a __r is empty.
        */
+      _GLIBCXX26_CONSTEXPR
       shared_ptr(shared_ptr&& __r) noexcept
       : __shared_ptr<_Tp>(std::move(__r)) { }
 
@@ -346,6 +367,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *  @post   *this contains the old value of @a __r, @a __r is empty.
        */
       template<typename _Yp, typename = _Constructible<shared_ptr<_Yp>>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(shared_ptr<_Yp>&& __r) noexcept
 	: __shared_ptr<_Tp>(std::move(__r)) { }
 
@@ -358,6 +380,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        *          in which case the constructor has no effect.
        */
       template<typename _Yp, typename = _Constructible<const weak_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	explicit shared_ptr(const weak_ptr<_Yp>& __r)
 	: __shared_ptr<_Tp>(__r) { }
 
@@ -373,6 +396,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // 2399. shared_ptr's constructor from unique_ptr should be constrained
       template<typename _Yp, typename _Del,
 	       typename = _Constructible<unique_ptr<_Yp, _Del>>>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(unique_ptr<_Yp, _Del>&& __r)
 	: __shared_ptr<_Tp>(std::move(__r)) { }
 
@@ -395,6 +419,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       shared_ptr& operator=(const shared_ptr&) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<const shared_ptr<_Yp>&>
 	operator=(const shared_ptr<_Yp>& __r) noexcept
 	{
@@ -415,6 +440,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #pragma GCC diagnostic pop
 #endif
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr&
       operator=(shared_ptr&& __r) noexcept
       {
@@ -423,6 +449,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       template<class _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<shared_ptr<_Yp>>
 	operator=(shared_ptr<_Yp>&& __r) noexcept
 	{
@@ -431,6 +458,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Del>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<unique_ptr<_Yp, _Del>>
 	operator=(unique_ptr<_Yp, _Del>&& __r)
 	{
@@ -446,73 +474,89 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{ }
 
       template<typename _Yp, typename _Alloc, typename... _Args>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_NonArray<_Yp>>
 	allocate_shared(const _Alloc&, _Args&&...);
 
       template<typename _Yp, typename... _Args>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_NonArray<_Yp>>
 	make_shared(_Args&&...);
 
 #if __glibcxx_shared_ptr_arrays >= 201707L
       // This constructor is non-standard, it is used by allocate_shared<T[]>.
       template<typename _Alloc, typename _Init = const remove_extent_t<_Tp>*>
+	_GLIBCXX26_CONSTEXPR
 	shared_ptr(const _Sp_counted_array_base<_Alloc>& __a,
 		   _Init __init = nullptr)
 	: __shared_ptr<_Tp>(__a, __init)
 	{ }
 
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	allocate_shared(const _Alloc&, size_t);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	make_shared(size_t);
 
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	allocate_shared(const _Alloc&, size_t, const remove_extent_t<_Yp>&);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	make_shared(size_t, const remove_extent_t<_Yp>&);
 
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_BoundedArray<_Yp>>
 	allocate_shared(const _Alloc&);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_BoundedArray<_Yp>>
 	make_shared();
 
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_BoundedArray<_Yp>>
 	allocate_shared(const _Alloc&, const remove_extent_t<_Yp>&);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_BoundedArray<_Yp>>
 	make_shared(const remove_extent_t<_Yp>&);
 
 #if __glibcxx_smart_ptr_for_overwrite
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_NotUnboundedArray<_Yp>>
 	allocate_shared_for_overwrite(const _Alloc&);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_NotUnboundedArray<_Yp>>
 	make_shared_for_overwrite();
 
       template<typename _Yp, typename _Alloc>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	allocate_shared_for_overwrite(const _Alloc&, size_t);
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	friend shared_ptr<_UnboundedArray<_Yp>>
 	make_shared_for_overwrite(size_t);
 #endif
 #endif
 
       // This constructor is non-standard, it is used by weak_ptr::lock().
+      _GLIBCXX26_CONSTEXPR
       shared_ptr(const weak_ptr<_Tp>& __r, std::nothrow_t) noexcept
       : __shared_ptr<_Tp>(__r, std::nothrow) { }
 
@@ -532,24 +576,30 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Equality operator for shared_ptr objects, compares the stored pointers
   template<typename _Tp, typename _Up>
-    _GLIBCXX_NODISCARD inline bool
+    _GLIBCXX_NODISCARD
+    _GLIBCXX26_CONSTEXPR
+    inline bool
     operator==(const shared_ptr<_Tp>& __a, const shared_ptr<_Up>& __b) noexcept
     { return __a.get() == __b.get(); }
 
   /// shared_ptr comparison with nullptr
   template<typename _Tp>
-    _GLIBCXX_NODISCARD inline bool
+    _GLIBCXX_NODISCARD
+    _GLIBCXX26_CONSTEXPR
+    inline bool
     operator==(const shared_ptr<_Tp>& __a, nullptr_t) noexcept
     { return !__a; }
 
 #ifdef __cpp_lib_three_way_comparison
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline strong_ordering
     operator<=>(const shared_ptr<_Tp>& __a,
 		const shared_ptr<_Up>& __b) noexcept
     { return compare_three_way()(__a.get(), __b.get()); }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline strong_ordering
     operator<=>(const shared_ptr<_Tp>& __a, nullptr_t) noexcept
     {
@@ -669,6 +719,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Swap overload for shared_ptr
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline void
     swap(shared_ptr<_Tp>& __a, shared_ptr<_Tp>& __b) noexcept
     { __a.swap(__b); }
@@ -677,6 +728,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Convert type of `shared_ptr`, via `static_cast`
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     static_pointer_cast(const shared_ptr<_Up>& __r) noexcept
     {
@@ -686,6 +738,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Convert type of `shared_ptr`, via `const_cast`
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     const_pointer_cast(const shared_ptr<_Up>& __r) noexcept
     {
@@ -695,6 +748,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// Convert type of `shared_ptr`, via `dynamic_cast`
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     dynamic_pointer_cast(const shared_ptr<_Up>& __r) noexcept
     {
@@ -722,6 +776,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `static_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     static_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {
@@ -733,6 +788,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `const_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     const_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {
@@ -744,6 +800,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Convert type of `shared_ptr` rvalue, via `dynamic_cast`
   /// @since C++20
   template<typename _Tp, typename _Up>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_Tp>
     dynamic_pointer_cast(shared_ptr<_Up>&& __r) noexcept
     {
@@ -806,18 +863,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       template<typename _Yp,
 	       typename = _Constructible<const shared_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(const shared_ptr<_Yp>& __r) noexcept
 	: __weak_ptr<_Tp>(__r) { }
 
       weak_ptr(const weak_ptr&) noexcept = default;
 
       template<typename _Yp, typename = _Constructible<const weak_ptr<_Yp>&>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(const weak_ptr<_Yp>& __r) noexcept
 	: __weak_ptr<_Tp>(__r) { }
 
       weak_ptr(weak_ptr&&) noexcept = default;
 
       template<typename _Yp, typename = _Constructible<weak_ptr<_Yp>>>
+	_GLIBCXX26_CONSTEXPR
 	weak_ptr(weak_ptr<_Yp>&& __r) noexcept
 	: __weak_ptr<_Tp>(std::move(__r)) { }
 
@@ -825,6 +885,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(const weak_ptr& __r) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<const weak_ptr<_Yp>&>
 	operator=(const weak_ptr<_Yp>& __r) noexcept
 	{
@@ -833,6 +894,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<const shared_ptr<_Yp>&>
 	operator=(const shared_ptr<_Yp>& __r) noexcept
 	{
@@ -844,6 +906,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(weak_ptr&& __r) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<weak_ptr<_Yp>>
 	operator=(weak_ptr<_Yp>&& __r) noexcept
 	{
@@ -851,6 +914,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return *this;
 	}
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       lock() const noexcept
       { return shared_ptr<_Tp>(*this, std::nothrow); }
@@ -865,6 +929,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// Swap overload for weak_ptr
   /// @relates weak_ptr
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline void
     swap(weak_ptr<_Tp>& __a, weak_ptr<_Tp>& __b) noexcept
     { __a.swap(__b); }
@@ -960,19 +1025,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     protected:
       constexpr enable_shared_from_this() noexcept { }
 
+      _GLIBCXX26_CONSTEXPR
       enable_shared_from_this(const enable_shared_from_this&) noexcept { }
 
+      _GLIBCXX26_CONSTEXPR
       enable_shared_from_this&
       operator=(const enable_shared_from_this&) noexcept
       { return *this; }
 
+      _GLIBCXX26_CONSTEXPR
       ~enable_shared_from_this() { }
 
     public:
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<_Tp>
       shared_from_this()
       { return shared_ptr<_Tp>(this->_M_weak_this); }
 
+      _GLIBCXX26_CONSTEXPR
       shared_ptr<const _Tp>
       shared_from_this() const
       { return shared_ptr<const _Tp>(this->_M_weak_this); }
@@ -982,10 +1052,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        * Get a `weak_ptr` referring to the object that has `*this` as its base.
        * @since C++17
        */
+      _GLIBCXX26_CONSTEXPR
       weak_ptr<_Tp>
       weak_from_this() noexcept
       { return this->_M_weak_this; }
 
+      _GLIBCXX26_CONSTEXPR
       weak_ptr<const _Tp>
       weak_from_this() const noexcept
       { return this->_M_weak_this; }
@@ -994,11 +1066,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     private:
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_weak_assign(_Tp1* __p, const __shared_count<>& __n) const noexcept
 	{ _M_weak_this._M_assign(__p, __n); }
 
       // Found by ADL when this is an associated class.
+      _GLIBCXX26_CONSTEXPR
       friend const enable_shared_from_this*
       __enable_shared_from_this_base(const __shared_count<>&,
 				     const enable_shared_from_this* __p)
@@ -1012,6 +1086,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   /// @relates shared_ptr @{
 
+#if __glibcxx_constexpr_memory >= 202506L
+  template<typename _Tp, typename _Alloc, typename... _Args>
+  constexpr auto
+  cest_allocate_shared(const _Alloc& __a, size_t __n, _Args&&... __args)
+  {
+    using _Up = remove_extent_t<_Tp>;
+    using _Alloc_traits = allocator_traits<_Alloc>;
+    using _Alloc2 = _Alloc_traits::template rebind_alloc<_Up>;
+    using _Alloc_traits2 = _Alloc_traits::template rebind_traits<_Up>;
+    using _Ptr = typename _Alloc_traits2::pointer;
+
+    struct _Del {
+      constexpr void operator()(const _Ptr __p) {
+        size_t __i = _M_i;
+        while (__i--)
+          _Alloc_traits2::destroy(_M_a2, addressof(__p[__i]));
+        _Alloc_traits2::deallocate(_M_a2, __p, _M_n);
+      };
+
+      _Alloc2 _M_a2;
+      const size_t _M_i;
+      const size_t _M_n;
+    };
+
+    size_t __i{};
+    _Ptr __p{};
+    _Alloc2 __a2 = __a;
+
+    try {
+      __p = _Alloc_traits2::allocate(__a2, __n);
+      for (; __i < __n; ++__i)
+        _Alloc_traits2::construct(__a2, addressof(__p[__i]),
+          std::forward<_Args>(__args)...);
+    } catch (...) {
+      _Del{__a2, __i, __n}(__p);
+      throw;
+    }
+
+    return shared_ptr<_Tp>(__p, _Del{__a2, __i, __n}, __a2);
+  }
+#endif
+
   /**
    *  @brief  Create an object that is owned by a shared_ptr.
    *  @param  __a     An allocator.
@@ -1024,9 +1140,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  and the new object.
    */
   template<typename _Tp, typename _Alloc, typename... _Args>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_NonArray<_Tp>>
     allocate_shared(const _Alloc& __a, _Args&&... __args)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, 1,
+          std::forward<_Args>(__args)...);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(_Sp_alloc_shared_tag<_Alloc>{__a},
 			     std::forward<_Args>(__args)...);
     }
@@ -1039,11 +1164,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *          constructor of @a _Tp.
    */
   template<typename _Tp, typename... _Args>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_NonArray<_Tp>>
     make_shared(_Args&&... __args)
     {
       using _Alloc = allocator<void>;
       _Alloc __a;
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, 1,
+          std::forward<_Args>(__args)...);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(_Sp_alloc_shared_tag<_Alloc>{__a},
 			     std::forward<_Args>(__args)...);
     }
@@ -1051,6 +1185,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #if __glibcxx_shared_ptr_arrays >= 201707L
   /// @cond undocumented
   template<typename _Tp, typename _Alloc = allocator<void>>
+    _GLIBCXX26_CONSTEXPR
     auto
     __make_shared_arr_tag(size_t __n, const _Alloc& __a = _Alloc()) noexcept
     {
@@ -1064,32 +1199,64 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// @endcond
 
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     allocate_shared(const _Alloc& __a, size_t __n)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, __n);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n, __a));
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared(size_t __n)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n));
     }
 
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     allocate_shared(const _Alloc& __a, size_t __n,
 		    const remove_extent_t<_Tp>& __u)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, __n, __u);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n, __a),
 			     std::__addressof(__u));
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared(size_t __n, const remove_extent_t<_Tp>& __u)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n, __u);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n),
 			     std::__addressof(__u));
     }
@@ -1107,40 +1274,81 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   /// @endcond
 
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_BoundedArray<_Tp>>
     allocate_shared(const _Alloc& __a)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, extent_v<_Tp>);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>(__a));
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_BoundedArray<_Tp>>
     make_shared()
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, extent_v<_Tp>);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>());
     }
 
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_BoundedArray<_Tp>>
     allocate_shared(const _Alloc& __a, const remove_extent_t<_Tp>& __u)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, extent_v<_Tp>, __u);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>(__a),
 			     std::__addressof(__u));
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_BoundedArray<_Tp>>
     make_shared(const remove_extent_t<_Tp>& __u)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, extent_v<_Tp>, __u);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>(),
 			     std::__addressof(__u));
     }
 
 #if __glibcxx_smart_ptr_for_overwrite
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_NotUnboundedArray<_Tp>>
     allocate_shared_for_overwrite(const _Alloc& __a)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        constexpr size_t __n = is_array_v<_Tp> ? extent_v<_Tp> : 1;
+        return cest_allocate_shared<_Tp>(__a, __n);
+      }
+      else
+#endif
       if constexpr (is_array_v<_Tp>)
 	return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>(__a),
 			       _Sp_overwrite_tag{});
@@ -1155,9 +1363,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_NotUnboundedArray<_Tp>>
     make_shared_for_overwrite()
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        constexpr size_t __n = is_array_v<_Tp> ? extent_v<_Tp> : 1;
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n);
+      }
+      else
+#endif
       if constexpr (is_array_v<_Tp>)
 	return shared_ptr<_Tp>(std::__make_shared_arrN_tag<_Tp>(),
 			       _Sp_overwrite_tag{});
@@ -1169,17 +1386,33 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, typename _Alloc>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     allocate_shared_for_overwrite(const _Alloc& __a, size_t __n)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(__a, __n);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n, __a),
 			     _Sp_overwrite_tag{});
     }
 
   template<typename _Tp>
+    _GLIBCXX26_CONSTEXPR
     inline shared_ptr<_UnboundedArray<_Tp>>
     make_shared_for_overwrite(size_t __n)
     {
+#if __glibcxx_constexpr_memory >= 202506L
+      if (__builtin_is_constant_evaluated())
+      {
+        return cest_allocate_shared<_Tp>(allocator<_Tp>{}, __n);
+      }
+      else
+#endif
       return shared_ptr<_Tp>(std::__make_shared_arr_tag<_Tp>(__n),
 			     _Sp_overwrite_tag{});
     }
@@ -1191,6 +1424,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct hash<shared_ptr<_Tp>>
     : public __hash_base<size_t, shared_ptr<_Tp>>
     {
+      _GLIBCXX26_CONSTEXPR
       size_t
       operator()(const shared_ptr<_Tp>& __s) const noexcept
       {

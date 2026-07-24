@@ -60,6 +60,85 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    * @{
    */
 
+#if __glibcxx_constexpr_memory >= 202506L
+_GLIBCXX26_CONSTEXPR
+auto ce__atomic_load_n(auto *ptr, int memorder)
+{
+  if consteval { return *ptr; }
+  else         { return __atomic_load_n(ptr, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+void ce__atomic_load(auto *ptr, auto *ret, int memorder)
+{
+  if consteval { *ret = *ptr; }
+  else         { __atomic_load(ptr, ret, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+auto ce__atomic_fetch_add(auto *ptr, auto val, int memorder)
+{
+  if consteval {
+    if constexpr (std::is_pointer_v<std::decay_t<decltype(*ptr)>>) {
+      auto tmp = *ptr; *ptr += val/sizeof(**ptr); return tmp;
+    } else {
+      auto tmp = *ptr; *ptr += val;               return tmp;
+    }
+  }
+  else         { return __atomic_fetch_add(ptr, val, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+auto ce__atomic_fetch_sub(auto *ptr, auto val, int memorder)
+{
+  if consteval {
+    if constexpr (std::is_pointer_v<std::decay_t<decltype(*ptr)>>) {
+      auto tmp = *ptr; *ptr -= val/sizeof(**ptr); return tmp;
+    } else {
+      auto tmp = *ptr; *ptr -= val;               return tmp;
+    }
+  }
+  else         { return __atomic_fetch_sub(ptr, val, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+void ce__atomic_store_n(auto *ptr, auto val, int memorder)
+{
+  if consteval { *ptr = val; }
+  else         { return __atomic_store_n(ptr, val, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+void ce__atomic_clear(bool *ptr, int memorder)
+{
+  if consteval { *ptr = 0; }
+  else         { __atomic_clear(ptr, memorder); }
+}
+_GLIBCXX26_CONSTEXPR
+bool ce__atomic_test_and_set(auto *ptr, int memorder)
+{
+  if consteval { auto tmp = *ptr; *ptr = 1; return tmp; }
+  else         { return __atomic_test_and_set(ptr, memorder); }
+}
+template<typename _Tp, typename _ValFn>
+_GLIBCXX26_CONSTEXPR
+void
+ce__atomic_wait_address_v(const _Tp* __addr, _Tp __old, _ValFn __vfn) noexcept
+{
+  if consteval { if (*__addr == __old) { while(true); } } // infinite loop
+  else         { std::__atomic_wait_address_v(__addr, __old, __vfn); }
+}
+template<typename _Tp>
+_GLIBCXX26_CONSTEXPR
+void
+ce__atomic_notify_address(const _Tp* __addr, bool __all) noexcept
+{
+  if consteval {                /* nothing */                 }
+  else         { std::__atomic_notify_address(__addr, __all); }
+}
+_GLIBCXX26_CONSTEXPR
+auto ce__atomic_exchange_n(auto *ptr, auto val, int memorder)
+{
+  if consteval { auto tmp = *ptr; *ptr = val; return tmp; }
+  else         { return __atomic_exchange_n(ptr, val, memorder); }
+}
+#endif
+
   /// Enumeration for memory_order
 #if __cplusplus > 201703L
   enum class memory_order : int
@@ -227,10 +306,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       : __atomic_flag_base{ _S_init(__i) }
     { }
 
+    _GLIBCXX26_CONSTEXPR
     _GLIBCXX_ALWAYS_INLINE bool
     test_and_set(memory_order __m = memory_order_seq_cst) noexcept
     {
-      return __atomic_test_and_set (&_M_i, int(__m));
+      return ce__atomic_test_and_set (&_M_i, int(__m));
     }
 
     _GLIBCXX_ALWAYS_INLINE bool
@@ -240,11 +320,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
 #ifdef __glibcxx_atomic_flag_test // C++ >= 20
+    _GLIBCXX26_CONSTEXPR
     _GLIBCXX_ALWAYS_INLINE bool
     test(memory_order __m = memory_order_seq_cst) const noexcept
     {
       __atomic_flag_data_type __v;
-      __atomic_load(&_M_i, &__v, int(__m));
+      ce__atomic_load(&_M_i, &__v, int(__m));
       return __v == __GCC_ATOMIC_TEST_AND_SET_TRUEVAL;
     }
 
@@ -286,6 +367,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    _GLIBCXX26_CONSTEXPR
     _GLIBCXX_ALWAYS_INLINE void
     clear(memory_order __m = memory_order_seq_cst) noexcept
     {
@@ -295,7 +377,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __glibcxx_assert(__b != memory_order_acquire);
       __glibcxx_assert(__b != memory_order_acq_rel);
 
-      __atomic_clear (&_M_i, int(__m));
+      ce__atomic_clear (&_M_i, int(__m));
     }
 
     _GLIBCXX_ALWAYS_INLINE void
@@ -383,12 +465,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       constexpr __atomic_base(__int_type __i) noexcept : _M_i (__i) { }
 
+      _GLIBCXX26_CONSTEXPR
       operator __int_type() const noexcept
       { return load(); }
 
       operator __int_type() const volatile noexcept
       { return load(); }
 
+      _GLIBCXX26_CONSTEXPR
       __int_type
       operator=(__int_type __i) noexcept
       {
@@ -403,6 +487,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __i;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __int_type
       operator++(int) noexcept
       { return fetch_add(1); }
@@ -411,6 +496,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator++(int) volatile noexcept
       { return fetch_add(1); }
 
+      _GLIBCXX26_CONSTEXPR
       __int_type
       operator--(int) noexcept
       { return fetch_sub(1); }
@@ -493,6 +579,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       store(__int_type __i, memory_order __m = memory_order_seq_cst) noexcept
       {
@@ -502,7 +589,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__glibcxx_assert(__b != memory_order_acq_rel);
 	__glibcxx_assert(__b != memory_order_consume);
 
-	__atomic_store_n(&_M_i, __i, int(__m));
+	ce__atomic_store_n(&_M_i, __i, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE void
@@ -519,6 +606,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 #pragma GCC diagnostic pop
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __int_type
       load(memory_order __m = memory_order_seq_cst) const noexcept
       {
@@ -527,7 +615,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__glibcxx_assert(__b != memory_order_release);
 	__glibcxx_assert(__b != memory_order_acq_rel);
 
-	return __atomic_load_n(&_M_i, int(__m));
+	return ce__atomic_load_n(&_M_i, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE __int_type
@@ -631,43 +719,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       wait(__int_type __old,
 	  memory_order __m = memory_order_seq_cst) const noexcept
       {
-	std::__atomic_wait_address_v(&_M_i, __old,
+	ce__atomic_wait_address_v(&_M_i, __old,
 			   [__m, this] { return this->load(__m); });
       }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_one() noexcept
-      { std::__atomic_notify_address(&_M_i, false); }
+      { ce__atomic_notify_address(&_M_i, false); }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_all() noexcept
-      { std::__atomic_notify_address(&_M_i, true); }
+      { ce__atomic_notify_address(&_M_i, true); }
 
       // TODO add const volatile overload
 #endif // __glibcxx_atomic_wait
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __int_type
       fetch_add(__int_type __i,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_add(&_M_i, __i, int(__m)); }
+      { return ce__atomic_fetch_add(&_M_i, __i, int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __int_type
       fetch_add(__int_type __i,
 		memory_order __m = memory_order_seq_cst) volatile noexcept
       { return __atomic_fetch_add(&_M_i, __i, int(__m)); }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __int_type
       fetch_sub(__int_type __i,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_sub(&_M_i, __i, int(__m)); }
+      { return ce__atomic_fetch_sub(&_M_i, __i, int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __int_type
       fetch_sub(__int_type __i,
@@ -751,6 +844,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // Requires __pointer_type convertible to _M_p.
       constexpr __atomic_base(__pointer_type __p) noexcept : _M_p (__p) { }
 
+      _GLIBCXX26_CONSTEXPR
       operator __pointer_type() const noexcept
       { return load(); }
 
@@ -771,6 +865,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __p;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __pointer_type
       operator++(int) noexcept
       { return fetch_add(1); }
@@ -845,6 +940,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       store(__pointer_type __p,
 	    memory_order __m = memory_order_seq_cst) noexcept
@@ -856,7 +952,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__glibcxx_assert(__b != memory_order_acq_rel);
 	__glibcxx_assert(__b != memory_order_consume);
 
-	__atomic_store_n(&_M_p, __p, int(__m));
+	ce__atomic_store_n(&_M_p, __p, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE void
@@ -873,6 +969,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 #pragma GCC diagnostic pop
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       load(memory_order __m = memory_order_seq_cst) const noexcept
       {
@@ -881,7 +978,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__glibcxx_assert(__b != memory_order_release);
 	__glibcxx_assert(__b != memory_order_acq_rel);
 
-	return __atomic_load_n(&_M_p, int(__m));
+	return ce__atomic_load_n(&_M_p, int(__m));
       }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type
@@ -895,11 +992,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __atomic_load_n(&_M_p, int(__m));
       }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       exchange(__pointer_type __p,
 	       memory_order __m = memory_order_seq_cst) noexcept
       {
-	return __atomic_exchange_n(&_M_p, __p, int(__m));
+	return ce__atomic_exchange_n(&_M_p, __p, int(__m));
       }
 
 
@@ -955,44 +1053,49 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
 #if __glibcxx_atomic_wait
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       wait(__pointer_type __old,
 	   memory_order __m = memory_order_seq_cst) const noexcept
       {
-	std::__atomic_wait_address_v(&_M_p, __old,
+	ce__atomic_wait_address_v(&_M_p, __old,
 				     [__m, this]
 				     { return this->load(__m); });
       }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_one() const noexcept
-      { std::__atomic_notify_address(&_M_p, false); }
+      { ce__atomic_notify_address(&_M_p, false); }
 
       // TODO add const volatile overload
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE void
       notify_all() const noexcept
-      { std::__atomic_notify_address(&_M_p, true); }
+      { ce__atomic_notify_address(&_M_p, true); }
 
       // TODO add const volatile overload
 #endif // __glibcxx_atomic_wait
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_add(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
+      { return ce__atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_add(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) volatile noexcept
       { return __atomic_fetch_add(&_M_p, _S_type_size(__d), int(__m)); }
 
+      _GLIBCXX26_CONSTEXPR
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_sub(ptrdiff_t __d,
 		memory_order __m = memory_order_seq_cst) noexcept
-      { return __atomic_fetch_sub(&_M_p, _S_type_size(__d), int(__m)); }
+      { return ce__atomic_fetch_sub(&_M_p, _S_type_size(__d), int(__m)); }
 
       _GLIBCXX_ALWAYS_INLINE __pointer_type
       fetch_sub(ptrdiff_t __d,

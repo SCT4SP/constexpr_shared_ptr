@@ -66,6 +66,9 @@
 # include <bits/stl_uninitialized.h>
 #endif
 
+#define __glibcxx_want_constexpr_memory
+#include <bits/version.h>
+
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -84,8 +87,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   class bad_weak_ptr : public std::exception
   {
   public:
+    _GLIBCXX26_CONSTEXPR
     virtual char const* what() const noexcept;
 
+    _GLIBCXX26_CONSTEXPR
     virtual ~bad_weak_ptr() noexcept;
   };
 
@@ -125,32 +130,39 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     : public _Mutex_base<_Lp>
     {
     public:
+      _GLIBCXX26_CONSTEXPR
       _Sp_counted_base() noexcept
       : _M_use_count(1), _M_weak_count(1) { }
 
+      _GLIBCXX26_CONSTEXPR
       virtual
       ~_Sp_counted_base() noexcept
       { }
 
       // Called when _M_use_count drops to zero, to release the resources
       // managed by *this.
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_dispose() noexcept = 0;
 
       // Called when _M_weak_count drops to zero.
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_destroy() noexcept
       { delete this; }
 
+      _GLIBCXX26_CONSTEXPR
       virtual void*
       _M_get_deleter(const std::type_info&) noexcept = 0;
 
       // Increment the use count (used when the count is greater than zero).
+      _GLIBCXX26_CONSTEXPR
       void
       _M_add_ref_copy()
       { _S_chk(__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1)); }
 
       // Increment the use count if it is non-zero, throw otherwise.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_add_ref_lock()
       {
@@ -159,14 +171,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       // Increment the use count if it is non-zero.
+      _GLIBCXX26_CONSTEXPR
       bool
       _M_add_ref_lock_nothrow() noexcept;
 
       // Decrement the use count.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_release() noexcept;
 
       // Called by _M_release() when the use count reaches zero.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_release_last_use() noexcept
       {
@@ -193,11 +208,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // As above, but 'noinline' to reduce code size on the cold path.
       __attribute__((__noinline__))
+      _GLIBCXX26_CONSTEXPR
       void
       _M_release_last_use_cold() noexcept
       { _M_release_last_use(); }
 
       // Increment the weak count.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_weak_add_ref() noexcept
       {
@@ -209,6 +226,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       // Decrement the weak count.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_weak_release() noexcept
       {
@@ -227,11 +245,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
       }
 
+      _GLIBCXX26_CONSTEXPR
       long
       _M_get_use_count() const noexcept
       {
 	// No memory barrier is used here so there is no synchronization
 	// with other threads.
+#if __glibcxx_constexpr_memory >= 202506L
+	if (__builtin_is_constant_evaluated())
+	  return _M_use_count;
+#endif
 	auto __count = __atomic_load_n(&_M_use_count, __ATOMIC_RELAXED);
 
 	// If long is wider than _Atomic_word then we can treat _Atomic_word
@@ -252,6 +275,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Called when incrementing _M_use_count to cause a trap on overflow.
       // This should be passed the value of the counter before the increment.
+      _GLIBCXX26_CONSTEXPR
       static void
       _S_chk(_Atomic_word __count)
       {
@@ -288,6 +312,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // member specializations because they use unsigned arithmetic and so avoid
   // undefined overflow.
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline void
     _Sp_counted_base<_S_single>::_M_add_ref_copy()
     {
@@ -296,6 +321,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline void
     _Sp_counted_base<_S_single>::_M_weak_release() noexcept
     {
@@ -304,6 +330,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline long
     _Sp_counted_base<_S_single>::_M_get_use_count() const noexcept
     {
@@ -312,6 +339,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline bool
     _Sp_counted_base<_S_single>::
     _M_add_ref_lock_nothrow() noexcept
@@ -323,10 +351,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+#if defined(__clang__) && __glibcxx_constexpr_memory >= 202506L
+    // This specialisation should not be constexpr, but Clang has an issue:
+    // https://github.com/llvm/llvm-project/issues/62888
+    _GLIBCXX26_CONSTEXPR
+#endif
     inline bool
     _Sp_counted_base<_S_mutex>::
     _M_add_ref_lock_nothrow() noexcept
     {
+#if defined(__clang__) && __glibcxx_constexpr_memory >= 202506L
+      if consteval
+      {
+        if (_M_use_count)
+          __glibcxx_assert(false);
+        else
+          __glibcxx_assert(false);
+        return false;
+      }
+      else
+      {
+#endif
       __gnu_cxx::__scoped_lock sentry(*this);
       if (auto __c = __gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1))
 	_S_chk(__c);
@@ -341,9 +386,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return false;
 	}
       return true;
+#if defined(__clang__) && __glibcxx_constexpr_memory >= 202506L
+      }
+#endif
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline bool
     _Sp_counted_base<_S_atomic>::
     _M_add_ref_lock_nothrow() noexcept
@@ -357,14 +406,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // Replace the current counter value with the old value + 1, as
 	  // long as it's not changed meanwhile.
 	}
+#if __glibcxx_constexpr_memory >= 202506L
+      while (__builtin_is_constant_evaluated()
+        ?   (!(_M_use_count == __count ? (_M_use_count = __count + 1, true)
+                                       : (__count = _M_use_count, false)))
+        :   (!__atomic_compare_exchange_n(&_M_use_count, &__count, __count + 1,
+					  true, __ATOMIC_ACQ_REL,
+					  __ATOMIC_RELAXED)));
+#else
       while (!__atomic_compare_exchange_n(&_M_use_count, &__count, __count + 1,
 					  true, __ATOMIC_ACQ_REL,
 					  __ATOMIC_RELAXED));
+#endif
       _S_chk(__count);
       return true;
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline void
     _Sp_counted_base<_S_single>::_M_release() noexcept
     {
@@ -376,6 +435,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline void
     _Sp_counted_base<_S_mutex>::_M_release() noexcept
     {
@@ -388,12 +448,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<>
+    _GLIBCXX26_CONSTEXPR
     inline void
     _Sp_counted_base<_S_atomic>::_M_release() noexcept
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wc++17-extensions" // if constexpr
       _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(&_M_use_count);
+#if !(__glibcxx_constexpr_memory >= 202506L)
 #if ! _GLIBCXX_TSAN
       constexpr bool __lock_free
 	= __atomic_always_lock_free(sizeof(long long), 0)
@@ -432,6 +494,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    }
 	}
       else
+#endif
 #endif
       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1)
 	{
@@ -478,18 +541,33 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     class _Sp_counted_ptr final : public _Sp_counted_base<_Lp>
     {
     public:
+      _GLIBCXX26_CONSTEXPR
       explicit
       _Sp_counted_ptr(_Ptr __p) noexcept
       : _M_ptr(__p) { }
 
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_dispose() noexcept
+#if __glibcxx_constexpr_memory >= 202506L
+      {
+#ifdef __clang__ // https://github.com/llvm/llvm-project/issues/64777
+        if constexpr (is_same_v<_Ptr, nullptr_t> &&
+                     (_S_single == _Lp || _S_mutex == _Lp || _S_atomic == _Lp))
+          return; // do nothing, as with the 3 problematic specialisations below
+#endif
+        delete _M_ptr;
+      }
+#else
       { delete _M_ptr; }
+#endif
 
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_destroy() noexcept
       { delete this; }
 
+      _GLIBCXX26_CONSTEXPR
       virtual void*
       _M_get_deleter(const std::type_info&) noexcept
       { return nullptr; }
@@ -501,6 +579,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Ptr             _M_ptr;
     };
 
+#ifndef __clang__ // https://github.com/llvm/llvm-project/issues/64777
   template<>
     inline void
     _Sp_counted_ptr<nullptr_t, _S_single>::_M_dispose() noexcept { }
@@ -512,6 +591,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<>
     inline void
     _Sp_counted_ptr<nullptr_t, _S_atomic>::_M_dispose() noexcept { }
+#endif // __clang__
 
 #if ! __has_cpp_attribute(__no_unique_address__)
 #error "support for [[__no_unique_address__]] attribute is required"
@@ -551,23 +631,28 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       using __allocator_type = __alloc_rebind<_Alloc, _Sp_counted_deleter>;
 
       // __d(__p) must not throw.
+      _GLIBCXX26_CONSTEXPR
       _Sp_counted_deleter(_Ptr __p, _Deleter __d) noexcept
       : _M_del{std::move(__d)}, _M_alloc{}, _M_ptr(__p) { }
 
       // __d(__p) must not throw.
+      _GLIBCXX26_CONSTEXPR
       _Sp_counted_deleter(_Ptr __p, _Deleter __d, const _Alloc& __a) noexcept
       : _M_del{std::move(__d)}, _M_alloc{__a}, _M_ptr(__p) { }
 
 #pragma GCC diagnostic push // PR tree-optimization/122197
 #pragma GCC diagnostic ignored "-Wfree-nonheap-object"
   template<typename> class auto_ptr;
+      _GLIBCXX26_CONSTEXPR
       ~_Sp_counted_deleter() noexcept { }
 #pragma GCC diagnostic pop
 
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_dispose() noexcept
       { _M_del._M_obj(_M_ptr); }
 
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_destroy() noexcept
       {
@@ -576,6 +661,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	this->~_Sp_counted_deleter();
       }
 
+      _GLIBCXX26_CONSTEXPR
       virtual void*
       _M_get_deleter(const type_info& __ti [[__gnu__::__unused__]]) noexcept
       {
@@ -630,6 +716,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Alloc parameter is not a reference so doesn't alias anything in __args
       template<typename... _Args>
+	_GLIBCXX26_CONSTEXPR
 	_Sp_counted_ptr_inplace(_Alloc __a, _Args&&... __args)
 	: _M_alloc{__a}
 	{
@@ -641,9 +728,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #pragma GCC diagnostic push // PR tree-optimization/122197
 #pragma GCC diagnostic ignored "-Warray-bounds"
+      _GLIBCXX26_CONSTEXPR
       ~_Sp_counted_ptr_inplace() noexcept { }
 #pragma GCC diagnostic pop
 
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_dispose() noexcept
       {
@@ -651,6 +740,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       // Override because the allocator needs to know the dynamic type
+      _GLIBCXX26_CONSTEXPR
       virtual void
       _M_destroy() noexcept
       {
@@ -664,6 +754,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // No longer used, but code compiled against old libstdc++ headers
       // might still call it from __shared_ptr ctor to get the pointer out.
+      _GLIBCXX26_CONSTEXPR
       virtual void*
       _M_get_deleter(const std::type_info& __ti) noexcept override
       {
@@ -683,6 +774,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return nullptr;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __remove_cv_t<_Tp>*
       _M_ptr() noexcept { return _M_storage._M_ptr(); }
 
@@ -757,12 +849,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       size_t _M_n = 0;
       bool _M_overwrite = false;
 
+      _GLIBCXX26_CONSTEXPR
       typename allocator_traits<_Alloc>::pointer
       _M_alloc_array(size_t __tail)
       {
 	return allocator_traits<_Alloc>::allocate(_M_alloc, _M_n + __tail);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       _M_dealloc_array(typename allocator_traits<_Alloc>::pointer __p,
 		       size_t __tail)
@@ -772,6 +866,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Init the array elements
       template<typename _Init>
+	_GLIBCXX26_CONSTEXPR
 	void
 	_M_init(typename allocator_traits<_Alloc>::value_type* __p,
 		_Init __init)
@@ -904,6 +999,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return (__bytes + sizeof(_Tp) - 1) / sizeof(_Tp);
       }
 
+      _GLIBCXX26_CONSTEXPR
       void*
       _M_get_deleter(const std::type_info&) noexcept override
       { return nullptr; }
@@ -914,6 +1010,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   struct __sp_array_delete
   {
     template<typename _Yp>
+      _GLIBCXX26_CONSTEXPR
       void operator()(_Yp* __p) const { delete[] __p; }
   };
 
@@ -937,6 +1034,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { }
 
       template<typename _Ptr>
+        _GLIBCXX26_CONSTEXPR
         explicit
 	__shared_count(_Ptr __p) : _M_pi(0)
 	{
@@ -952,23 +1050,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Ptr>
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(_Ptr __p, /* is_array = */ false_type)
 	: __shared_count(__p)
 	{ }
 
       template<typename _Ptr>
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(_Ptr __p, /* is_array = */ true_type)
 	: __shared_count(__p, __sp_array_delete{}, allocator<void>())
 	{ }
 
       template<typename _Ptr, typename _Deleter,
 	       typename = typename __not_alloc_shared_tag<_Deleter>::type>
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(_Ptr __p, _Deleter __d)
 	: __shared_count(__p, std::move(__d), allocator<void>())
 	{ }
 
       template<typename _Ptr, typename _Deleter, typename _Alloc,
 	       typename = typename __not_alloc_shared_tag<_Deleter>::type>
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(_Ptr __p, _Deleter __d, _Alloc __a) : _M_pi(0)
 	{
 	  typedef _Sp_counted_deleter<_Ptr, _Deleter, _Alloc, _Lp> _Sp_cd_type;
@@ -977,6 +1079,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	      typename _Sp_cd_type::__allocator_type __a2(__a);
 	      auto __guard = std::__allocate_guarded(__a2);
 	      _Sp_cd_type* __mem = __guard.get();
+#if __glibcxx_constexpr_memory >= 202506L
+        if (__builtin_is_constant_evaluated())
+          std::construct_at(__mem, __p, std::move(__d), std::move(__a));
+        else
+#endif
 	      ::new (__mem) _Sp_cd_type(__p, std::move(__d), std::move(__a));
 	      _M_pi = __mem;
 	      __guard = nullptr;
@@ -1062,6 +1169,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // Special case for unique_ptr<_Tp,_Del> to provide the strong guarantee.
       template<typename _Tp, typename _Del>
         explicit
+	_GLIBCXX26_CONSTEXPR
 	__shared_count(std::unique_ptr<_Tp, _Del>&& __r) : _M_pi(0)
 	{
 	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
@@ -1088,18 +1196,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       // Throw bad_weak_ptr when __r._M_get_use_count() == 0.
+      _GLIBCXX26_CONSTEXPR
       explicit __shared_count(const __weak_count<_Lp>& __r);
 
       // Does not throw if __r._M_get_use_count() == 0, caller must check.
+      _GLIBCXX26_CONSTEXPR
       explicit
       __shared_count(const __weak_count<_Lp>& __r, std::nothrow_t) noexcept;
 
+      _GLIBCXX26_CONSTEXPR
       ~__shared_count() noexcept
       {
 	if (_M_pi != nullptr)
 	  _M_pi->_M_release();
       }
 
+      _GLIBCXX26_CONSTEXPR
       __shared_count(const __shared_count& __r) noexcept
       : _M_pi(__r._M_pi)
       {
@@ -1107,6 +1219,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_pi->_M_add_ref_copy();
       }
 
+      _GLIBCXX26_CONSTEXPR
       __shared_count&
       operator=(const __shared_count& __r) noexcept
       {
@@ -1122,6 +1235,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return *this;
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       _M_swap(__shared_count& __r) noexcept
       {
@@ -1130,6 +1244,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_pi = __tmp;
       }
 
+      _GLIBCXX26_CONSTEXPR
       long
       _M_get_use_count() const noexcept
       { return _M_pi ? _M_pi->_M_get_use_count() : 0; }
@@ -1138,14 +1253,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _M_unique() const noexcept
       { return this->_M_get_use_count() == 1; }
 
+      _GLIBCXX26_CONSTEXPR
       void*
       _M_get_deleter(const std::type_info& __ti) const noexcept
       { return _M_pi ? _M_pi->_M_get_deleter(__ti) : nullptr; }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       _M_less(const __shared_count& __rhs) const noexcept
       { return std::less<_Sp_counted_base<_Lp>*>()(this->_M_pi, __rhs._M_pi); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       _M_less(const __weak_count<_Lp>& __rhs) const noexcept
       { return std::less<_Sp_counted_base<_Lp>*>()(this->_M_pi, __rhs._M_pi); }
@@ -1181,6 +1299,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr __weak_count() noexcept : _M_pi(nullptr)
       { }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count(const __shared_count<_Lp>& __r) noexcept
       : _M_pi(__r._M_pi)
       {
@@ -1188,6 +1307,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_pi->_M_weak_add_ref();
       }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count(const __weak_count& __r) noexcept
       : _M_pi(__r._M_pi)
       {
@@ -1195,16 +1315,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _M_pi->_M_weak_add_ref();
       }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count(__weak_count&& __r) noexcept
       : _M_pi(__r._M_pi)
       { __r._M_pi = nullptr; }
 
+      _GLIBCXX26_CONSTEXPR
       ~__weak_count() noexcept
       {
 	if (_M_pi != nullptr)
 	  _M_pi->_M_weak_release();
       }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count&
       operator=(const __shared_count<_Lp>& __r) noexcept
       {
@@ -1217,6 +1340,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return *this;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count&
       operator=(const __weak_count& __r) noexcept
       {
@@ -1229,6 +1353,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return *this;
       }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_count&
       operator=(__weak_count&& __r) noexcept
       {
@@ -1239,6 +1364,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return *this;
       }
 
+      _GLIBCXX26_CONSTEXPR
       void
       _M_swap(__weak_count& __r) noexcept
       {
@@ -1247,14 +1373,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_M_pi = __tmp;
       }
 
+      _GLIBCXX26_CONSTEXPR
       long
       _M_get_use_count() const noexcept
       { return _M_pi != nullptr ? _M_pi->_M_get_use_count() : 0; }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       _M_less(const __weak_count& __rhs) const noexcept
       { return std::less<_Sp_counted_base<_Lp>*>()(this->_M_pi, __rhs._M_pi); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       _M_less(const __shared_count<_Lp>& __rhs) const noexcept
       { return std::less<_Sp_counted_base<_Lp>*>()(this->_M_pi, __rhs._M_pi); }
@@ -1281,6 +1410,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   // Now that __weak_count is defined we can define this constructor:
   template<_Lock_policy _Lp>
+    _GLIBCXX26_CONSTEXPR
     inline
     __shared_count<_Lp>::__shared_count(const __weak_count<_Lp>& __r)
     : _M_pi(__r._M_pi)
@@ -1291,6 +1421,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   // Now that __weak_count is defined we can define this constructor:
   template<_Lock_policy _Lp>
+    _GLIBCXX26_CONSTEXPR
     inline
     __shared_count<_Lp>::
     __shared_count(const __weak_count<_Lp>& __r, std::nothrow_t) noexcept
@@ -1381,6 +1512,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   template<typename _Tp>
     [[__gnu__::__always_inline__]]
+    _GLIBCXX26_CONSTEXPR
     inline _Tp*
     __shared_ptr_deref(_Tp* __p)
     {
@@ -1396,10 +1528,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     public:
       using element_type = _Tp;
 
+      _GLIBCXX26_CONSTEXPR
       element_type&
       operator*() const noexcept
       { return *std::__shared_ptr_deref(_M_get()); }
 
+      _GLIBCXX26_CONSTEXPR
       element_type*
       operator->() const noexcept
       {
@@ -1408,6 +1542,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
     private:
+      _GLIBCXX26_CONSTEXPR
       element_type*
       _M_get() const noexcept
       { return static_cast<const __shared_ptr<_Tp, _Lp>*>(this)->get(); }
@@ -1453,6 +1588,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wc++17-extensions"
+      _GLIBCXX26_CONSTEXPR
       element_type&
       operator[](ptrdiff_t __i) const noexcept
       {
@@ -1463,6 +1599,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #pragma GCC diagnostic pop
 
     private:
+      _GLIBCXX26_CONSTEXPR
       element_type*
       _M_get() const noexcept
       { return static_cast<const __shared_ptr<_Tp, _Lp>*>(this)->get(); }
@@ -1514,6 +1651,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { }
 
       template<typename _Yp, typename = _SafeConv<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	explicit
 	__shared_ptr(_Yp* __p)
 	: _M_ptr(__p), _M_refcount(__p, typename is_array<_Tp>::type())
@@ -1524,6 +1662,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Deleter, typename = _SafeConv<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(_Yp* __p, _Deleter __d)
 	: _M_ptr(__p), _M_refcount(__p, std::move(__d))
 	{
@@ -1534,6 +1673,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       template<typename _Yp, typename _Deleter, typename _Alloc,
 	       typename = _SafeConv<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(_Yp* __p, _Deleter __d, _Alloc __a)
 	: _M_ptr(__p), _M_refcount(__p, std::move(__d), std::move(__a))
 	{
@@ -1543,17 +1683,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Deleter>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(nullptr_t __p, _Deleter __d)
 	: _M_ptr(0), _M_refcount(__p, std::move(__d))
 	{ }
 
       template<typename _Deleter, typename _Alloc>
+        _GLIBCXX26_CONSTEXPR
         __shared_ptr(nullptr_t __p, _Deleter __d, _Alloc __a)
 	: _M_ptr(0), _M_refcount(__p, std::move(__d), std::move(__a))
 	{ }
 
       // Aliasing constructor
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(const __shared_ptr<_Yp, _Lp>& __r,
 		     element_type* __p) noexcept
 	: _M_ptr(__p), _M_refcount(__r._M_refcount) // never throws
@@ -1561,6 +1704,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Aliasing constructor
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(__shared_ptr<_Yp, _Lp>&& __r,
 		     element_type* __p) noexcept
 	: _M_ptr(__p), _M_refcount()
@@ -1574,10 +1718,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       ~__shared_ptr() = default;
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(const __shared_ptr<_Yp, _Lp>& __r) noexcept
 	: _M_ptr(__r._M_ptr), _M_refcount(__r._M_refcount)
 	{ }
 
+      _GLIBCXX26_CONSTEXPR
       __shared_ptr(__shared_ptr&& __r) noexcept
       : _M_ptr(__r._M_ptr), _M_refcount()
       {
@@ -1586,6 +1732,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(__shared_ptr<_Yp, _Lp>&& __r) noexcept
 	: _M_ptr(__r._M_ptr), _M_refcount()
 	{
@@ -1594,6 +1741,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	explicit __shared_ptr(const __weak_ptr<_Yp, _Lp>& __r)
 	: _M_refcount(__r._M_refcount) // may throw
 	{
@@ -1605,6 +1753,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // If an exception is thrown this constructor has no effect.
       template<typename _Yp, typename _Del,
 	       typename = _UniqCompatible<_Yp, _Del>>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(unique_ptr<_Yp, _Del>&& __r)
 	: _M_ptr(__r.get()), _M_refcount()
 	{
@@ -1643,6 +1792,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr __shared_ptr(nullptr_t) noexcept : __shared_ptr() { }
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<_Yp>
 	operator=(const __shared_ptr<_Yp, _Lp>& __r) noexcept
 	{
@@ -1664,6 +1814,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #pragma GCC diagnostic pop
 #endif
 
+      _GLIBCXX26_CONSTEXPR
       __shared_ptr&
       operator=(__shared_ptr&& __r) noexcept
       {
@@ -1672,6 +1823,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       template<class _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<_Yp>
 	operator=(__shared_ptr<_Yp, _Lp>&& __r) noexcept
 	{
@@ -1680,6 +1832,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Del>
+	_GLIBCXX26_CONSTEXPR
 	_UniqAssignable<_Yp, _Del>
 	operator=(unique_ptr<_Yp, _Del>&& __r)
 	{
@@ -1687,11 +1840,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return *this;
 	}
 
+      _GLIBCXX26_CONSTEXPR
       void
       reset() noexcept
       { __shared_ptr().swap(*this); }
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_SafeConv<_Yp>
 	reset(_Yp* __p) // _Yp must be complete.
 	{
@@ -1701,6 +1856,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Deleter>
+	_GLIBCXX26_CONSTEXPR
 	_SafeConv<_Yp>
 	reset(_Yp* __p, _Deleter __d)
 	{ __shared_ptr(__p, std::move(__d)).swap(*this); }
@@ -1711,11 +1867,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
         { __shared_ptr(__p, std::move(__d), std::move(__a)).swap(*this); }
 
       /// Return the stored pointer.
+      _GLIBCXX26_CONSTEXPR
       element_type*
       get() const noexcept
       { return _M_ptr; }
 
       /// Return true if the stored pointer is not null.
+      _GLIBCXX26_CONSTEXPR
       explicit operator bool() const noexcept
       { return _M_ptr != nullptr; }
 
@@ -1725,11 +1883,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return _M_refcount._M_unique(); }
 
       /// If *this owns a pointer, return the number of owners, otherwise zero.
+      _GLIBCXX26_CONSTEXPR
       long
       use_count() const noexcept
       { return _M_refcount._M_get_use_count(); }
 
       /// Exchange both the owned pointer and the stored pointer.
+      _GLIBCXX26_CONSTEXPR
       void
       swap(__shared_ptr<_Tp, _Lp>& __other) noexcept
       {
@@ -1745,11 +1905,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        * @{
       */
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	bool
 	owner_before(__shared_ptr<_Tp1, _Lp> const& __rhs) const noexcept
 	{ return _M_refcount._M_less(__rhs._M_refcount); }
 
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	bool
 	owner_before(__weak_ptr<_Tp1, _Lp> const& __rhs) const noexcept
 	{ return _M_refcount._M_less(__rhs._M_refcount); }
@@ -1772,6 +1934,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     protected:
       // This constructor is non-standard, it is used by allocate_shared.
       template<typename _Alloc, typename... _Args>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(_Sp_alloc_shared_tag<_Alloc> __tag, _Args&&... __args)
 	: _M_ptr(), _M_refcount(_M_ptr, __tag, std::forward<_Args>(__args)...)
 	{ _M_enable_shared_from_this_with(_M_ptr); }
@@ -1784,6 +1947,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #if __glibcxx_shared_ptr_arrays >= 201707L // C++ >= 20 && HOSTED
       // This constructor is non-standard, it is used by allocate_shared<T[]>.
       template<typename _Alloc, typename _Init = const remove_extent_t<_Tp>*>
+	_GLIBCXX26_CONSTEXPR
 	__shared_ptr(const _Sp_counted_array_base<_Alloc>& __a,
 		     _Init __init = nullptr)
 	: _M_ptr(), _M_refcount(_M_ptr, __a, __init)
@@ -1792,6 +1956,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // This constructor is used by __weak_ptr::lock() and
       // shared_ptr::shared_ptr(const weak_ptr&, std::nothrow_t).
+      _GLIBCXX26_CONSTEXPR
       __shared_ptr(const __weak_ptr<_Tp, _Lp>& __r, std::nothrow_t) noexcept
       : _M_refcount(__r._M_refcount, std::nothrow)
       {
@@ -1817,6 +1982,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	: __not_<is_array<_Tp>> { }; // No enable shared_from_this for arrays
 
       template<typename _Yp, typename _Yp2 = typename remove_cv<_Yp>::type>
+  _GLIBCXX26_CONSTEXPR
 	typename enable_if<__has_esft_base<_Yp2>::value>::type
 	_M_enable_shared_from_this_with(_Yp* __p) noexcept
 	{
@@ -1825,10 +1991,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp, typename _Yp2 = typename remove_cv<_Yp>::type>
+	_GLIBCXX26_CONSTEXPR
 	typename enable_if<!__has_esft_base<_Yp2>::value>::type
 	_M_enable_shared_from_this_with(_Yp*) noexcept
 	{ }
 
+      _GLIBCXX26_CONSTEXPR
       void*
       _M_get_deleter(const std::type_info& __ti) const noexcept
       { return _M_refcount._M_get_deleter(__ti); }
@@ -1840,6 +2008,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	friend _Del* get_deleter(const __shared_ptr<_Tp1, _Lp1>&) noexcept;
 
       template<typename _Del, typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	friend _Del* get_deleter(const shared_ptr<_Tp1>&) noexcept;
 
 #ifdef __glibcxx_atomic_shared_ptr
@@ -2056,6 +2225,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #pragma GCC diagnostic ignored "-Wc++17-extensions" // if constexpr
       // Helper for construction/assignment:
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	static element_type*
 	_S_safe_upcast(const __weak_ptr<_Yp, _Lp>& __r)
 	{
@@ -2113,20 +2283,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       // It is not possible to avoid spurious access violations since
       // in multithreaded programs __r._M_ptr may be invalidated at any point.
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__weak_ptr(const __weak_ptr<_Yp, _Lp>& __r) noexcept
 	: _M_ptr(_S_safe_upcast(__r)), _M_refcount(__r._M_refcount)
         { }
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__weak_ptr(const __shared_ptr<_Yp, _Lp>& __r) noexcept
 	: _M_ptr(__r._M_ptr), _M_refcount(__r._M_refcount)
 	{ }
 
+      _GLIBCXX26_CONSTEXPR
       __weak_ptr(__weak_ptr&& __r) noexcept
       : _M_ptr(__r._M_ptr), _M_refcount(std::move(__r._M_refcount))
       { __r._M_ptr = nullptr; }
 
       template<typename _Yp, typename = _Compatible<_Yp>>
+	_GLIBCXX26_CONSTEXPR
 	__weak_ptr(__weak_ptr<_Yp, _Lp>&& __r) noexcept
 	: _M_ptr(_S_safe_upcast(__r)), _M_refcount(std::move(__r._M_refcount))
         { __r._M_ptr = nullptr; }
@@ -2135,6 +2309,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator=(const __weak_ptr& __r) noexcept = default;
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<_Yp>
 	operator=(const __weak_ptr<_Yp, _Lp>& __r) noexcept
 	{
@@ -2144,6 +2319,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	}
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<_Yp>
 	operator=(const __shared_ptr<_Yp, _Lp>& __r) noexcept
 	{
@@ -2160,6 +2336,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       }
 
       template<typename _Yp>
+	_GLIBCXX26_CONSTEXPR
 	_Assignable<_Yp>
 	operator=(__weak_ptr<_Yp, _Lp>&& __r) noexcept
 	{
@@ -2169,24 +2346,29 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return *this;
 	}
 
+      _GLIBCXX26_CONSTEXPR
       __shared_ptr<_Tp, _Lp>
       lock() const noexcept
       { return __shared_ptr<_Tp, _Lp>(*this, std::nothrow); }
 
+      _GLIBCXX26_CONSTEXPR
       long
       use_count() const noexcept
       { return _M_refcount._M_get_use_count(); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       expired() const noexcept
       { return _M_refcount._M_get_use_count() == 0; }
 
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	bool
 	owner_before(const __shared_ptr<_Tp1, _Lp>& __rhs) const noexcept
 	{ return _M_refcount._M_less(__rhs._M_refcount); }
 
       template<typename _Tp1>
+	_GLIBCXX26_CONSTEXPR
 	bool
 	owner_before(const __weak_ptr<_Tp1, _Lp>& __rhs) const noexcept
 	{ return _M_refcount._M_less(__rhs._M_refcount); }
@@ -2205,10 +2387,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return _M_refcount == __rhs._M_refcount; }
 #endif
 
+      _GLIBCXX26_CONSTEXPR
       void
       reset() noexcept
       { __weak_ptr().swap(*this); }
 
+      _GLIBCXX26_CONSTEXPR
       void
       swap(__weak_ptr& __s) noexcept
       {
@@ -2218,6 +2402,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     private:
       // Used by __enable_shared_from_this.
+      _GLIBCXX26_CONSTEXPR
       void
       _M_assign(_Tp* __ptr, const __shared_count<_Lp>& __refcount) noexcept
       {
@@ -2251,14 +2436,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Tp, typename _Tp1>
     struct _Sp_owner_less : public binary_function<_Tp, _Tp, bool>
     {
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp& __lhs, const _Tp& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp& __lhs, const _Tp1& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }
 
+      _GLIBCXX26_CONSTEXPR
       bool
       operator()(const _Tp1& __lhs, const _Tp& __rhs) const noexcept
       { return __lhs.owner_before(__rhs); }
@@ -2269,6 +2457,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct _Sp_owner_less<void, void>
     {
       template<typename _Tp, typename _Up>
+	_GLIBCXX26_CONSTEXPR
 	auto
 	operator()(const _Tp& __lhs, const _Up& __rhs) const noexcept
 	-> decltype(__lhs.owner_before(__rhs))
@@ -2364,6 +2553,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct hash<__shared_ptr<_Tp, _Lp>>
     : public __hash_base<size_t, __shared_ptr<_Tp, _Lp>>
     {
+      _GLIBCXX26_CONSTEXPR
       size_t
       operator()(const __shared_ptr<_Tp, _Lp>& __s) const noexcept
       {
@@ -2371,6 +2561,23 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    __s.get());
       }
     };
+
+_GLIBCXX_END_NAMESPACE_VERSION
+} // namespace
+
+// From src/c++11/shared_ptr.cc with additional constexpr
+
+namespace std _GLIBCXX_VISIBILITY(default)
+{
+_GLIBCXX_BEGIN_NAMESPACE_VERSION
+
+  _GLIBCXX26_CONSTEXPR
+  bad_weak_ptr::~bad_weak_ptr() noexcept = default;
+
+  _GLIBCXX26_CONSTEXPR
+  char const*
+  bad_weak_ptr::what() const noexcept
+  { return "bad_weak_ptr"; }
 
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace

@@ -38,16 +38,88 @@
 
 #ifdef __glibcxx_out_ptr // C++ >= 23
 
-// This approach to adding the 2 [in]out_ptr conversion operators for constexpr
-// usage causes an ABI break in libstdc++, by increasing their size by 2x void*
-//   #define __abi_break_for_conv_ops // was guarded by the constexpr shared_ptr feature test
-
 #include <tuple>
 #include <bits/ptr_traits.h>
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
+
+/// @cond undocumented
+namespace __detail
+{
+  template<typename _Ptr, bool = is_pointer_v<_Ptr>>
+    struct _Ptr_storage
+    {
+      constexpr _Ptr_storage() : _M_p() { }
+
+      constexpr explicit
+      _Ptr_storage(_Ptr __p) : _M_p(__p) { }
+
+      constexpr void
+      _M_activate_ptr() const
+      {
+#if __has_builtin(__builtin_is_within_lifetime)
+	if consteval {
+	  auto __self = const_cast<_Ptr_storage*>(this);
+	  if (!__builtin_is_within_lifetime(&__self->_M_p))
+	    __self->_M_p = static_cast<_Ptr>(__self->_M_v);
+	}
+#endif
+      }
+
+      constexpr void
+      _M_activate_void() const
+      {
+#if __has_builtin(__builtin_is_within_lifetime)
+	if consteval {
+	  auto __self = const_cast<_Ptr_storage*>(this);
+	  if (!__builtin_is_within_lifetime(&__self->_M_v))
+	    __self->_M_v = __self->_M_p;
+	}
+#endif
+      }
+
+      constexpr _Ptr&
+      _M_ref() const
+      {
+	_M_activate_ptr();
+	return const_cast<_Ptr_storage*>(this)->_M_p;
+      }
+
+      constexpr void*&
+      _M_vref() const
+      {
+	_M_activate_void();
+	return const_cast<_Ptr_storage*>(this)->_M_v;
+      }
+
+      union { _Ptr _M_p; void* _M_v; };
+    };
+
+  template<typename _Ptr>
+    struct _Ptr_storage<_Ptr, false>
+    {
+      constexpr _Ptr_storage() = default;
+
+      constexpr explicit
+      _Ptr_storage(_Ptr __p) : _M_p(std::move(__p)) { }
+
+      constexpr _Ptr&
+      _M_ref() const
+      { return const_cast<_Ptr_storage*>(this)->_M_p; }
+
+      [[no_unique_address]] _Ptr _M_p{};
+    };
+
+  template<typename _Ptr, typename _Linked>
+    struct _Ptr_bounce
+    {
+      _Ptr_storage<_Ptr> _M_st;
+      _Linked* _M_link;
+    };
+}
+/// @endcond
 
   /// Smart pointer adaptor for functions taking an output pointer parameter.
   /**
@@ -89,12 +161,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifdef __abi_break_for_conv_ops
-	return _M_impl._M_getv();
-#else
-	_Pointer* __p = *this;
-	return static_cast<void**>(static_cast<void*>(__p));
-#endif
+	if consteval {
+	  return _M_impl._M_getv();
+	} else {
+	  _Pointer* __p = *this;
+	  return static_cast<void**>(static_cast<void*>(__p));
+	}
       }
 
     private:
@@ -105,11 +177,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // This constructor must not modify __s because out_ptr_t and
 	  // inout_ptr_t want to do different things. After construction
 	  // they call _M_out_init() or _M_inout_init() respectively.
+	  _GLIBCXX26_CONSTEXPR
 	  _Impl(_Smart& __s, _Args&&... __args)
 	  : _M_smart(__s), _M_args(std::forward<_Args>(__args)...)
 	  { }
 
 	  // Called by out_ptr_t to clear the smart pointer before using it.
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  {
@@ -123,20 +197,28 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	  // Called by inout_ptr_t to copy the smart pointer's value
 	  // to the pointer that is returned from _M_get().
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
-	  { _M_ptr = _M_smart.release(); }
+	  { _M_ptr._M_ref() = _M_smart.release(); }
 
 	  // The pointer value returned by operator Pointer*().
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const
-	  { return __builtin_addressof(const_cast<_Pointer&>(_M_ptr)); }
+	  { return __builtin_addressof(_M_ptr._M_ref()); }
+
+	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(_M_ptr._M_vref()); }
 
 	  // Finalize the effects on the smart pointer.
+	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl() noexcept(false);
 
 	  _Smart& _M_smart;
-	  [[no_unique_address]] _Pointer _M_ptr{};
+	  [[no_unique_address]] __detail::_Ptr_storage<_Pointer> _M_ptr;
 	  [[no_unique_address]] tuple<_Args...> _M_args;
 	};
 
@@ -144,75 +226,108 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       template<typename _Tp>
 	struct _Impl<_Tp*, _Tp*>
 	{
+	  using _Bounce = __detail::_Ptr_bounce<_Tp*, _Tp*>;
+
+	  _GLIBCXX26_CONSTEXPR
+	  _Impl(_Tp*& __p)
+	  {
+	    if consteval {
+	      _M_b = new _Bounce{__detail::_Ptr_storage<_Tp*>(__p),
+				 __builtin_addressof(__p)};
+	    } else {
+	      _M_p = __builtin_addressof(__p);
+	    }
+	  }
+
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-#ifdef __abi_break_for_conv_ops
-	  { _M_p = nullptr; _M_pv = nullptr; _M_p_orig = nullptr; }
-#else
-	  { _M_p = nullptr; }
-#endif
+	  {
+	    if consteval {
+	      *_M_b->_M_link = nullptr;
+	      _M_b->_M_st._M_ref() = nullptr;
+	    } else {
+	      *_M_p = nullptr;
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
-#ifdef __abi_break_for_conv_ops
-	  { _M_pv = _M_p; _M_p_orig = _M_p; }
-#else
 	  { }
-#endif
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Tp**
 	  _M_get() const
-	  { return __builtin_addressof(const_cast<_Tp*&>(_M_p)); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_ref());
+	    } else {
+	      return _M_p;
+	    }
+	  }
 
-#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
-	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_vref());
+	    } else {
+	      return nullptr; // unreachable: operator void**() casts at runtime
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-	    if (_M_pv != _M_p_orig)
-	      _M_p = static_cast<_Tp*>(_M_pv);
+	    if consteval {
+	      *_M_b->_M_link = _M_b->_M_st._M_ref();
+	      delete _M_b;
+	    }
 	  }
-#endif
 
-	  _Tp*& _M_p;
-#ifdef __abi_break_for_conv_ops
-	  void* _M_pv;
-	  void* _M_p_orig;
-#endif
+	  union {
+	    _Tp** _M_p;    // runtime: the caller's pointer variable
+	    _Bounce* _M_b; // constant evaluation: transient heap storage
+	  };
 	};
 
       // Partial specialization for raw pointers, with conversion.
       template<typename _Tp, typename _Ptr> requires (!is_same_v<_Ptr, _Tp*>)
 	struct _Impl<_Tp*, _Ptr>
 	{
+	  _GLIBCXX26_CONSTEXPR
 	  explicit
 	  _Impl(_Tp*& __p)
 	  : _M_p(__p)
 	  { }
 
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
 	  { _M_p = nullptr; }
 
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_inout_init()
-	  { _M_ptr = _M_p; }
+	  { _M_ptr._M_ref() = _M_p; }
 
+	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const
-	  { return __builtin_addressof(const_cast<_Pointer&>(_M_ptr)); }
+	  { return __builtin_addressof(_M_ptr._M_ref()); }
 
-	  ~_Impl() { _M_p = static_cast<_Tp*>(_M_ptr); }
+	  _GLIBCXX26_CONSTEXPR
+	  void**
+	  _M_getv() const
+	  { return __builtin_addressof(_M_ptr._M_vref()); }
+
+	  _GLIBCXX26_CONSTEXPR
+	  ~_Impl() { _M_p = static_cast<_Tp*>(_M_ptr._M_ref()); }
 
 	  _Tp*& _M_p;
-	  _Pointer _M_ptr{};
+	  [[no_unique_address]] __detail::_Ptr_storage<_Pointer> _M_ptr;
 	};
 
       // Partial specialization for std::unique_ptr.
@@ -224,40 +339,67 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       template<typename _Tp, typename _Del>
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer>
-	{  
+	{
+	  using _Bounce = __detail::_Ptr_bounce<_Pointer, _Smart>;
+
+	  _GLIBCXX26_CONSTEXPR
+	  _Impl(_Smart& __s)
+	  {
+	    if consteval {
+	      _M_b = new _Bounce{__detail::_Ptr_storage<_Pointer>(__s.get()),
+				 __builtin_addressof(__s)};
+	    } else {
+	      _M_s = __builtin_addressof(__s);
+	    }
+	  }
+
 	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-#ifdef __abi_break_for_conv_ops
-	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
-#else
-	  { _M_smart.reset();}
-#endif
+	  {
+	    if consteval {
+	      _M_b->_M_link->reset();
+	      _M_b->_M_st._M_ref() = nullptr;
+	    } else {
+	      _M_s->reset();
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
-	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_ref());
+	    } else {
+	      return __builtin_addressof(_M_s->_M_t._M_ptr());
+	    }
+	  }
 
-#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
-	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_vref());
+	    } else {
+	      return nullptr; // unreachable: operator void**() casts at runtime
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-	    if (_M_pv != _M_p_orig)
-	      _M_smart._M_t._M_ptr() = static_cast<_Tp*>(_M_pv);
+	    if consteval {
+	      _M_b->_M_link->_M_t._M_ptr() = _M_b->_M_st._M_ref();
+	      delete _M_b;
+	    }
 	  }
-#endif
 
-	  _Smart& _M_smart;
-#ifdef __abi_break_for_conv_ops
-	  void* _M_pv;
-	  void* _M_p_orig;
-#endif
+	  union {
+	    _Smart* _M_s;  // runtime: the adapted unique_ptr
+	    _Bounce* _M_b; // constant evaluation: transient heap storage
+	  };
 	};
 
       // Partial specialization for std::unique_ptr with replacement deleter.
@@ -267,54 +409,74 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<unique_ptr<_Tp, _Del>,
 		     typename unique_ptr<_Tp, _Del>::pointer, _Del2>
 	{
-#ifdef __abi_break_for_conv_ops
-	  _GLIBCXX26_CONSTEXPR
-	  _Impl(unique_ptr<_Tp, _Del> & __s, _Del2&& __d)
-	  : _M_smart(__s), _M_del(std::forward<_Del2>(__d))
-	  {
-	    _M_pv     = _M_smart._M_t._M_ptr();
-	    _M_p_orig = _M_smart._M_t._M_ptr();
-	  }
-#endif
+	  using _Bounce = __detail::_Ptr_bounce<_Pointer, _Smart>;
 
+	  _GLIBCXX26_CONSTEXPR
+	  _Impl(_Smart& __s, _Del2&& __d)
+	  : _M_del(std::forward<_Del2>(__d))
+	  {
+	    if consteval {
+	      _M_b = new _Bounce{__detail::_Ptr_storage<_Pointer>(__s.get()),
+				 __builtin_addressof(__s)};
+	    } else {
+	      _M_s = __builtin_addressof(__s);
+	    }
+	  }
+
+	  _GLIBCXX26_CONSTEXPR
 	  void
 	  _M_out_init()
-#ifdef __abi_break_for_conv_ops
-	  { _M_smart.reset(); _M_pv = nullptr; _M_p_orig = nullptr; }
-#else
-	  { _M_smart.reset(); }
-#endif
+	  {
+	    if consteval {
+	      _M_b->_M_link->reset();
+	      _M_b->_M_st._M_ref() = nullptr;
+	    } else {
+	      _M_s->reset();
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
-	  { return __builtin_addressof(_M_smart._M_t._M_ptr()); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_ref());
+	    } else {
+	      return __builtin_addressof(_M_s->_M_t._M_ptr());
+	    }
+	  }
 
-#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
-	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
-#endif
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_vref());
+	    } else {
+	      return nullptr; // unreachable: operator void**() casts at runtime
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-#ifdef __abi_break_for_conv_ops
-	    if (_M_pv != _M_p_orig)
-	      _M_smart._M_t._M_ptr() = static_cast<_Smart::element_type*>(_M_pv);
-#endif
-	
-	    if (_M_smart.get())
-	      _M_smart._M_t._M_deleter() = std::forward<_Del2>(_M_del);
+	    if consteval {
+	      _Smart& __s = *_M_b->_M_link;
+	      __s._M_t._M_ptr() = _M_b->_M_st._M_ref();
+	      delete _M_b;
+	      if (__s.get())
+		__s._M_t._M_deleter() = std::forward<_Del2>(_M_del);
+	    } else {
+	      if (_M_s->get())
+		_M_s->_M_t._M_deleter() = std::forward<_Del2>(_M_del);
+	    }
 	  }
 
-	  _Smart& _M_smart;
+	  union {
+	    _Smart* _M_s;  // runtime: the adapted unique_ptr
+	    _Bounce* _M_b; // constant evaluation: transient heap storage
+	  };
 	  [[no_unique_address]] _Del2 _M_del;
-#ifdef __abi_break_for_conv_ops
-	  void* _M_pv;
-	  void* _M_p_orig;
-#endif
 	};
 
 #if _GLIBCXX_HOSTED
@@ -329,13 +491,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	struct _Impl<shared_ptr<_Tp>,
 		     typename shared_ptr<_Tp>::element_type*, _Del, _Alloc>
 	{
+	  using _Bounce = __detail::_Ptr_bounce<_Pointer, _Smart>;
+
 	  _GLIBCXX26_CONSTEXPR
 	  _Impl(_Smart& __s, _Del __d, _Alloc __a = _Alloc())
-	  : _M_smart(__s)
 	  {
 	    // We know shared_ptr cannot be used with inout_ptr_t
 	    // so we can do all set up here, instead of in _M_out_init().
-	    _M_smart.reset();
+	    __s.reset();
 
 	    // Similar to the shared_ptr(Y*, D, A) constructor, except that if
 	    // the allocation throws we do not need (or want) to call deleter.
@@ -343,47 +506,62 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    auto __mem = __a2.allocate(1);
 	    ::new (__mem) _Scd(nullptr, std::forward<_Del>(__d),
 			       std::forward<_Alloc>(__a));
-	    _M_smart._M_refcount._M_pi = __mem;
+	    __s._M_refcount._M_pi = __mem;
 
-#ifdef __abi_break_for_conv_ops
-      _M_pv     = _M_smart._M_ptr;
-      _M_p_orig = _M_smart._M_ptr;
-#endif
+	    if consteval {
+	      _M_b = new _Bounce{__detail::_Ptr_storage<_Pointer>(__s._M_ptr),
+				 __builtin_addressof(__s)};
+	    } else {
+	      _M_s = __builtin_addressof(__s);
+	    }
 	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  _Pointer*
 	  _M_get() const noexcept
-	  { return __builtin_addressof(_M_smart._M_ptr); }
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_ref());
+	    } else {
+	      return __builtin_addressof(_M_s->_M_ptr);
+	    }
+	  }
 
-#ifdef __abi_break_for_conv_ops
 	  _GLIBCXX26_CONSTEXPR
 	  void**
 	  _M_getv() const
-	  { return __builtin_addressof(const_cast<void*&>(_M_pv)); }
-#endif
+	  {
+	    if consteval {
+	      return __builtin_addressof(_M_b->_M_st._M_vref());
+	    } else {
+	      return nullptr; // unreachable: operator void**() casts at runtime
+	    }
+	  }
 
 	  _GLIBCXX26_CONSTEXPR
 	  ~_Impl()
 	  {
-#ifdef __abi_break_for_conv_ops
-      if (_M_pv != _M_p_orig)
-        _M_smart._M_ptr = static_cast<_Smart::element_type*>(_M_pv);
-#endif
+	    _Smart* __sp;
+	    if consteval {
+	      __sp = _M_b->_M_link;
+	      __sp->_M_ptr = _M_b->_M_st._M_ref();
+	      delete _M_b;
+	    } else {
+	      __sp = _M_s;
+	    }
 
-	    auto& __pi = _M_smart._M_refcount._M_pi;
+	    auto& __pi = __sp->_M_refcount._M_pi;
 
-	    if (_Sp __ptr = _M_smart.get())
+	    if (_Sp __ptr = __sp->get())
 	      static_cast<_Scd*>(__pi)->_M_ptr = __ptr;
 	    else // Destroy the control block manually without invoking deleter.
 	      std::__exchange(__pi, nullptr)->_M_destroy();
 	  }
 
-	  _Smart& _M_smart;
-#ifdef __abi_break_for_conv_ops
-	  void* _M_pv;
-	  void* _M_p_orig;
-#endif
+	  union {
+	    _Smart* _M_s;  // runtime: the adapted shared_ptr
+	    _Bounce* _M_b; // constant evaluation: transient heap storage
+	  };
 
 	  using _Sp = typename _Smart::element_type*;
 	  using _Scd = _Sp_counted_deleter<_Sp, decay_t<_Del>,
@@ -447,12 +625,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
 	static_assert(is_pointer_v<_Pointer>);
-#ifdef __abi_break_for_conv_ops
-	return _M_impl._M_getv();
-#else
-	_Pointer* __p = *this;
-	return static_cast<void**>(static_cast<void*>(__p));
-#endif
+	if consteval {
+	  return _M_impl._M_getv();
+	} else {
+	  _Pointer* __p = *this;
+	  return static_cast<void**>(static_cast<void*>(__p));
+	}
       }
 
     private:
@@ -567,6 +745,7 @@ namespace __detail
   /// @cond undocumented
   template<typename _Smart, typename _Pointer, typename... _Args>
   template<typename _Smart2, typename _Pointer2, typename... _Args2>
+    _GLIBCXX26_CONSTEXPR
     inline
     out_ptr_t<_Smart, _Pointer, _Args...>::
     _Impl<_Smart2, _Pointer2, _Args2...>::~_Impl()
@@ -574,11 +753,12 @@ namespace __detail
       using _TypeId = decltype(__detail::__pointer_of_or<_Smart, _Pointer>());
       using _Sp = typename _TypeId::type;
 
-      if (!_M_ptr)
+      _Pointer& __p = _M_ptr._M_ref();
+
+      if (!__p)
 	return;
 
       _Smart& __s = _M_smart;
-      _Pointer& __p = _M_ptr;
 
       auto __reset = [&](auto&&... __args) {
 	if constexpr (__detail::__resettable<_Smart, _Sp, _Args...>)

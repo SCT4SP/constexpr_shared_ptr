@@ -1179,15 +1179,63 @@ bool inout_tests_voidpp_conversion()
     b = b && 43 == *up;
   }
 
+  // Unlike the raw ptr, unique_ptr, shared_ptr cases, this selects libstdc++'s
+  // generic out_ptr_t::_Impl, where out_ptr_t itself owns the ptr storage.
+  struct smart_int
+  {
+    using element_type = int;
+    int* p_ = nullptr;
+    constexpr void reset(int* q = nullptr) { delete p_; p_ = q; }
+    constexpr int* release() { int* q = p_; p_ = nullptr; return q; }
+    constexpr ~smart_int() { delete p_; }
+  };
+
+  // program-defined smart pointer; out_ptr; void**
+  {
+    smart_int s;
+    auto f = [&](void **pp) { b = b && nullptr == *pp; *pp = new int{9}; };
+    f(std::out_ptr(s));
+    b = b && s.p_ && 9 == *s.p_;
+  }
+
+  // program-defined smart pointer; inout_ptr; void**
+  {
+    smart_int s;
+    s.reset(new int{10});
+    auto f = [&](void **pp) {
+      b = b && 10 == *static_cast<int*>(*pp);
+      delete static_cast<int*>(*pp);
+      *pp = new int{11};
+    };
+    f(std::inout_ptr(s));
+    b = b && s.p_ && 11 == *s.p_;
+  }
+
   return b;
 }
 
 void inout_tests()
 {
+  {
+    // Demonstrate ptr adapters are the same size as in existing libstdc++
+    [[maybe_unused]] int* pi = nullptr;
+    [[maybe_unused]] auto del = [](int* p) { delete p; };
+    [[maybe_unused]] std::unique_ptr<int, decltype(del)> upd;
+    [[maybe_unused]] std::shared_ptr<int> sp;
+    constexpr auto svp = sizeof(void*);
+    static_assert(sizeof(decltype(std::out_ptr(pi)))         == svp);
+    static_assert(sizeof(decltype(std::inout_ptr(pi)))       == svp);
+    static_assert(sizeof(decltype(std::out_ptr(upd)))        == svp);
+    static_assert(sizeof(decltype(std::inout_ptr(upd)))      == svp);
+    static_assert(sizeof(decltype(std::out_ptr(upd, del)))   == svp*2);
+    static_assert(sizeof(decltype(std::inout_ptr(upd, del))) == svp*2);
+    static_assert(sizeof(decltype(std::out_ptr(sp, del)))    == svp);
+  }
+
   assert(inout_tests_typed_conversion());
   static_assert(inout_tests_typed_conversion());
   assert(inout_tests_voidpp_conversion());
-  //static_assert(inout_tests_voidpp_conversion());
+  static_assert(inout_tests_voidpp_conversion());
 }
 
 int main(int argc, char *argv[])

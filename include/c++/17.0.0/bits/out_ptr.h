@@ -272,7 +272,7 @@ namespace __detail
 	    if consteval {
 	      return __builtin_addressof(_M_b->_M_st._M_vref());
 	    } else {
-	      return nullptr; // unreachable: operator void**() casts at runtime
+	      return static_cast<void**>(static_cast<void*>(_M_get()));
 	    }
 	  }
 
@@ -381,7 +381,7 @@ namespace __detail
 	    if consteval {
 	      return __builtin_addressof(_M_b->_M_st._M_vref());
 	    } else {
-	      return nullptr; // unreachable: operator void**() casts at runtime
+	      return static_cast<void**>(static_cast<void*>(_M_get()));
 	    }
 	  }
 
@@ -451,7 +451,7 @@ namespace __detail
 	    if consteval {
 	      return __builtin_addressof(_M_b->_M_st._M_vref());
 	    } else {
-	      return nullptr; // unreachable: operator void**() casts at runtime
+	      return static_cast<void**>(static_cast<void*>(_M_get()));
 	    }
 	  }
 
@@ -532,7 +532,7 @@ namespace __detail
 	    if consteval {
 	      return __builtin_addressof(_M_b->_M_st._M_vref());
 	    } else {
-	      return nullptr; // unreachable: operator void**() casts at runtime
+	      return static_cast<void**>(static_cast<void*>(_M_get()));
 	    }
 	  }
 

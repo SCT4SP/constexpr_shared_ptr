@@ -1119,6 +1119,44 @@ bool inout_tests_typed_conversion()
     b = b && 44 == up[0].i_ && 45 == up[1].i_;
   }
 
+  // The adaptors must also support smart pointers whose pointer type is a
+  // class type for which only the typed conversion operator is available.
+  struct fancy_int
+  {
+    struct pointer
+    {
+      int* raw_ = nullptr;
+      constexpr pointer(std::nullptr_t = nullptr) {}
+      constexpr pointer(int* p) : raw_(p) {}
+      constexpr explicit operator bool() const { return raw_ != nullptr; }
+    };
+    pointer p_;
+    constexpr void reset(pointer p = nullptr) { delete p_.raw_; p_ = p; }
+    constexpr pointer release() { pointer p = p_; p_ = nullptr; return p; }
+    constexpr ~fancy_int() { delete p_.raw_; }
+  };
+
+  // fancy pointer; out_ptr
+  {
+    fancy_int s;
+    auto f = [&](fancy_int::pointer* pp) { b = b && !*pp; *pp = new int{12}; };
+    f(std::out_ptr(s));
+    b = b && s.p_.raw_ && 12 == *s.p_.raw_;
+  }
+
+  // fancy pointer; inout_ptr
+  {
+    fancy_int s;
+    s.reset(new int{13});
+    auto f = [&](fancy_int::pointer* pp) {
+      b = b && 13 == *pp->raw_;
+      delete pp->raw_;
+      *pp = new int{14};
+    };
+    f(std::inout_ptr(s));
+    b = b && s.p_.raw_ && 14 == *s.p_.raw_;
+  }
+
   return b;
 }
 
@@ -1185,8 +1223,8 @@ bool inout_tests_voidpp_conversion()
   {
     using element_type = int;
     int* p_ = nullptr;
-    constexpr void reset(int* q = nullptr) { delete p_; p_ = q; }
-    constexpr int* release() { int* q = p_; p_ = nullptr; return q; }
+    constexpr void reset(int* p = nullptr) { delete p_; p_ = p; }
+    constexpr int* release() { int* p = p_; p_ = nullptr; return p; }
     constexpr ~smart_int() { delete p_; }
   };
 

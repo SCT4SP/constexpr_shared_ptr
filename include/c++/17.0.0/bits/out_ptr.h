@@ -45,7 +45,6 @@ namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
-/// @cond undocumented
 namespace __detail
 {
   template<typename _Ptr, bool = is_pointer_v<_Ptr>>
@@ -60,11 +59,11 @@ namespace __detail
       _M_activate_ptr() const
       {
 #if __has_builtin(__builtin_is_within_lifetime)
-	if consteval {
-	  auto __self = const_cast<_Ptr_storage*>(this);
-	  if (!__builtin_is_within_lifetime(&__self->_M_p))
-	    __self->_M_p = static_cast<_Ptr>(__self->_M_v);
-	}
+        if consteval {
+          auto __self = const_cast<_Ptr_storage*>(this);
+          if (!__builtin_is_within_lifetime(&__self->_M_p))
+            __self->_M_p = static_cast<_Ptr>(__self->_M_v);
+        }
 #endif
       }
 
@@ -72,26 +71,26 @@ namespace __detail
       _M_activate_void() const
       {
 #if __has_builtin(__builtin_is_within_lifetime)
-	if consteval {
-	  auto __self = const_cast<_Ptr_storage*>(this);
-	  if (!__builtin_is_within_lifetime(&__self->_M_v))
-	    __self->_M_v = __self->_M_p;
-	}
+        if consteval {
+          auto __self = const_cast<_Ptr_storage*>(this);
+          if (!__builtin_is_within_lifetime(&__self->_M_v))
+            __self->_M_v = __self->_M_p;
+        }
 #endif
       }
 
       constexpr _Ptr&
       _M_ref() const
       {
-	_M_activate_ptr();
-	return const_cast<_Ptr_storage*>(this)->_M_p;
+        _M_activate_ptr();
+        return const_cast<_Ptr_storage*>(this)->_M_p;
       }
 
       constexpr void*&
       _M_vref() const
       {
-	_M_activate_void();
-	return const_cast<_Ptr_storage*>(this)->_M_v;
+        _M_activate_void();
+        return const_cast<_Ptr_storage*>(this)->_M_v;
       }
 
       union { _Ptr _M_p; void* _M_v; };
@@ -119,7 +118,6 @@ namespace __detail
       _Linked* _M_link;
     };
 }
-/// @endcond
 
   /// Smart pointer adaptor for functions taking an output pointer parameter.
   /**
@@ -160,13 +158,13 @@ namespace __detail
       _GLIBCXX26_CONSTEXPR
       operator void**() const noexcept requires (!same_as<_Pointer, void*>)
       {
-	static_assert(is_pointer_v<_Pointer>);
-	if consteval {
-	  return _M_impl._M_getv();
-	} else {
-	  _Pointer* __p = *this;
-	  return static_cast<void**>(static_cast<void*>(__p));
-	}
+        static_assert(is_pointer_v<_Pointer>);
+        if consteval {
+          return _M_impl._M_getv();
+        } else {
+          _Pointer* __p = *this;
+          return static_cast<void**>(static_cast<void*>(__p));
+        }
       }
 
     private:
@@ -465,10 +463,10 @@ namespace __detail
 	      __s._M_t._M_ptr() = _M_b->_M_st._M_ref();
 	      delete _M_b;
 	      if (__s.get())
-		__s._M_t._M_deleter() = std::forward<_Del2>(_M_del);
+		      __s._M_t._M_deleter() = std::forward<_Del2>(_M_del);
 	    } else {
 	      if (_M_s->get())
-		_M_s->_M_t._M_deleter() = std::forward<_Del2>(_M_del);
+		      _M_s->_M_t._M_deleter() = std::forward<_Del2>(_M_del);
 	    }
 	  }
 
@@ -510,7 +508,7 @@ namespace __detail
 
 	    if consteval {
 	      _M_b = new _Bounce{__detail::_Ptr_storage<_Pointer>(__s._M_ptr),
-				 __builtin_addressof(__s)};
+				  __builtin_addressof(__s)};
 	    } else {
 	      _M_s = __builtin_addressof(__s);
 	    }

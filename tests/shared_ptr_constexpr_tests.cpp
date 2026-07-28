@@ -1273,7 +1273,9 @@ void inout_tests()
   assert(inout_tests_typed_conversion());
   static_assert(inout_tests_typed_conversion());
   assert(inout_tests_voidpp_conversion());
+#if __cpp_lib_is_within_lifetime==202306L
   static_assert(inout_tests_voidpp_conversion());
+#endif
 }
 
 int main(int argc, char *argv[])

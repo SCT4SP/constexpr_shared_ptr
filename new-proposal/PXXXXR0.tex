@@ -1,0 +1,199 @@
+\documentclass[10pt]{article}
+
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{fullpage}
+\usepackage[colorlinks, allcolors=blue]{hyperref}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{courier}
+\usepackage[T1]{fontenc}
+% \usepackage{libertine}%% Only as example for the romans/sans fonts
+\usepackage[scaled=0.85]{beramono}
+\usepackage{changepage}
+\usepackage{nameref}
+\usepackage{enumitem}
+\usepackage{pdfpages} % includepdf
+
+% Solarized colour scheme for listings
+\definecolor{solarized@base03}{HTML}{002B36}
+\definecolor{solarized@base02}{HTML}{073642}
+\definecolor{solarized@base01}{HTML}{586e75}
+\definecolor{solarized@base00}{HTML}{657b83}
+\definecolor{solarized@base0}{HTML}{839496}
+\definecolor{solarized@base1}{HTML}{93a1a1}
+\definecolor{solarized@base2}{HTML}{EEE8D5}
+\definecolor{solarized@base3}{HTML}{FDF6E3}
+\definecolor{solarized@yellow}{HTML}{B58900}
+\definecolor{solarized@orange}{HTML}{CB4B16}
+\definecolor{solarized@red}{HTML}{DC322F}
+\definecolor{solarized@magenta}{HTML}{D33682}
+\definecolor{solarized@violet}{HTML}{6C71C4}
+\definecolor{solarized@blue}{HTML}{268BD2}
+\definecolor{solarized@cyan}{HTML}{2AA198}
+\definecolor{solarized@green}{HTML}{859900}
+
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+}
+
+% Define C++ syntax highlighting colour scheme
+\lstdefinelanguage{cpp}{
+  language=C++,
+  basicstyle=\footnotesize\ttfamily,
+  numbers=left,
+  numberstyle=\footnotesize,
+  tabsize=2,
+  breaklines=true,
+  escapeinside={@}{@},
+  numberstyle=\tiny\color{solarized@base01},
+  keywordstyle=\color{solarized@green},
+  stringstyle=\color{solarized@cyan}\ttfamily,
+  identifierstyle=\color{solarized@blue},
+  commentstyle=\color{solarized@base01},
+  emphstyle=\color{solarized@red},
+  frame=single,
+  rulecolor=\color{solarized@base2},
+  rulesepcolor=\color{solarized@base2},
+  showstringspaces=false,
+}
+
+\lstdefinelanguage{diff}{
+  morecomment=[f][\color{blue}]{@@},           % group identifier
+  morecomment=[f][\color{red}]{-},             % deleted lines
+  morecomment=[f][\color{green!50!black}]{+},  % added lines
+  morecomment=[f][\color{magenta}]{---},       % diff header lines
+  morecomment=[f][\color{magenta}]{+++},
+}
+
+\lstdefinelanguage{plus}{
+  basicstyle=\footnotesize\ttfamily\color{green!50!black},
+  emph={see,below,TypeSwitch,unspecified},
+  emphstyle=\itshape
+}
+
+\lstdefinelanguage{signature}{
+  basicstyle=\ttfamily\color{green!50!black},
+  emph={see,below,TypeSwitch,unspecified},
+  emphstyle=\itshape
+}
+
+\newcommand{\desc}[1]{\textit{#1}}
+\newcommand{\requires}{\desc{Requires}}
+\newcommand{\effects}{\desc{Effects}}
+\newcommand{\precondition}{\desc{Precondition}}
+\newcommand{\postcondition}{\desc{Postcondition}}
+\newcommand{\throws}{\desc{Throws}}
+\newcommand{\returns}{\desc{Returns}}
+\newcommand{\remarks}{\desc{Remarks}}
+\newcommand{\exceptionsafety}{\desc{Exception Safety}}
+
+\newcommand{\fullref}[1]{\ref{#1} \nameref{#1}}
+
+\newcommand*{\wgxxi}[1]{[\href{https://wg21.link/#1}{#1}]}
+\newcommand*{\upstreamcommit}{05300d7}
+\newcommand*{\forkcommit}{fb46090}
+
+\date{}
+\title{\texttt{constexpr void**} conversion member functions for smart pointer adapters}
+
+\newcommand{\emailaddressP}{paul.keir@uws.ac.uk}
+\newcommand{\emailaddressH}{cpp@hanicka.net}
+\newcommand{\emailP}{\href{mailto:\emailaddressP}{\emailaddressP}}
+\newcommand{\emailH}{\href{mailto:\emailaddressH}{\emailaddressH}}
+
+\begin{document}
+
+\setlist{nosep} % No extra spaces between itemize list entries
+
+\maketitle\vspace{-2cm}
+
+\begin{flushright}
+  \begin{tabular}{ll}
+  Document \#:&PXXXXR0\\
+  Date:       &\date{2026-07-28}\\
+  Project:    &Programming Language C++\\
+  Audience:   &SG7 Compile-time programming, LEWG Library Evolution\\
+  Reply-to:   &\author{Paul Keir}\\
+              &\textless\emailP\textgreater\\
+              &\author{Hana Dusíková}\\
+              &\textless\emailH\textgreater
+  \end{tabular}
+\end{flushright}
+
+{\hypersetup{linkcolor=black}
+  \tableofcontents
+}
+
+\pagebreak
+
+\section{Revision History}
+
+For example: nothing.
+
+\section{Introduction}
+
+% \cite{P0784R7}
+% \texttt{std::shared_ptr}
+% functions from \wgxxi{smartptr}, as well as smart pointer specialisations
+% \wgxxi{util.smartptr.atomic.shared} and \wgxxi{util.smartptr.atomic.weak}.
+% C++23 introduced the smart pointer adaptors: \texttt{std::out\_ptr\_t} and
+% \texttt{std::inout\_ptr\_t}; as specified in \wgxxi{smartptr.adapt}. Objects of
+% \begin{lstlisting}[language=cpp]
+
+\section{Motivation and Scope}
+
+\section{Impact on the Standard}
+
+This proposal is a pure library extension, and does not require any new
+language features.
+
+\section{Implementation}
+
+An implementation by the first author, based on libstdc++ can be found
+\href{https://github.com/SCT4SP/constexpr_shared_ptr/tree/smartptr-adapt}{here}.
+A comprehensive test suite is included there within
+\texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
+script to run it. The proposed changes are tested within the
+\texttt{inout\_tests\_voidpp\_conversion} function, and require a C++ compiler
+with feature macro \texttt{\_\_cpp\_lib\_is\_within\_lifetime} defined to a
+value greater than or equal to \texttt{202306L}. All tests pass with recent
+Clang.
+
+% \section{Polls}
+
+\section{Proposed Wording}
+\label{sec:wording}
+
+The following wording changes apply to the \emph{C++ Standard Draft} and can
+also be viewed on Github via a fork of the \emph{C++ Standard Draft Sources}
+repository
+%\href{https://github.com/cplusplus/draft/compare/\upstreamcommit...pkeir:draft:\forkcommit}{here}.
+
+Pages from the \emph{C++ Standard Draft Sources} which include wording changes
+proposed here are also provided on the following pages; with changes
+highlighted.
+
+% As includepdf loses the highlighting/strikeout annotations
+% pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
+% https://askubuntu.com/a/18691
+% Yes, this is using std-diff.pdf *twice*; the first time below ensures
+% contents page numbers are correct.
+\includepdf[pages=-]{std-diff.pdf}
+
+\section{Acknowledgements}
+
+\section{References}
+\renewcommand{\section}[2]{}%
+\begin{thebibliography}{9}
+
+  \bibitem[P3037R6]{P0784R6}
+    Paul Keir, Hana Dusíková,
+    Peter Dimov, Louis Dionne, Nina Ranns, Richard Smith, Daveed Vandevoorde,
+    \emph{\texttt{constexpr std::shared_ptr} and friends} (2025)\newline
+    \url{https://wg21.link/P3037R6}
+
+\end{thebibliography}
+
+\end{document}

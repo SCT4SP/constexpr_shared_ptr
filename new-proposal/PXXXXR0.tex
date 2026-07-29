@@ -134,6 +134,9 @@ For example: nothing.
 
 \section{Introduction}
 
+Adopted C++26 proposal \cite{P3037R6} allowed most functions from
+\wgxxi{smartptr} to receive the \texttt{constexpr} qualifier}.
+
 % \cite{P0784R7}
 % \texttt{std::shared_ptr}
 % functions from \wgxxi{smartptr}, as well as smart pointer specialisations
@@ -144,6 +147,16 @@ For example: nothing.
 
 \section{Motivation and Scope}
 
+Motivation for this proposal is unchanged from that of \cite{P3037R6}: hygienic
+memory management and memory safety from the use of smart pointers should also
+be available during constant evaluation. Furthermore, language regularity is a
+worthy goal; ensuring that \emph{where possible} a user does not encounter a
+compilation error from the use of valid runtime code during constant
+evaluation.
+
+\emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}) intervened for
+those with ``hash'' in their name, and 
+
 \section{Impact on the Standard}
 
 This proposal is a pure library extension, and does not require any new
@@ -151,7 +164,9 @@ language features.
 
 \section{Implementation}
 
-An implementation by the first author, based on libstdc++ can be found
+An implementation
+%by the first author,
+based on libstdc++ can be found
 \href{https://github.com/SCT4SP/constexpr_shared_ptr/tree/smartptr-adapt}{here}.
 A comprehensive test suite is included there within
 \texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
@@ -166,33 +181,37 @@ Clang.
 \section{Proposed Wording}
 \label{sec:wording}
 
-The following wording changes apply to the \emph{C++ Standard Draft} and can
-also be viewed on Github via a fork of the \emph{C++ Standard Draft Sources}
-repository
+%The following wording changes apply to the \emph{C++ Standard Draft} and can
+%also be viewed on Github via a fork of the \emph{C++ Standard Draft Sources}
+%repository
+
 %\href{https://github.com/cplusplus/draft/compare/\upstreamcommit...pkeir:draft:\forkcommit}{here}.
 
 Pages from the \emph{C++ Standard Draft Sources} which include wording changes
-proposed here are also provided on the following pages; with changes
+proposed here are
+% also
+provided on the following pages; with changes
 highlighted.
 
-% As includepdf loses the highlighting/strikeout annotations
-% pdftk A=P3037R5.pdf B=std-diff.pdf cat A1-6 B A33-end output output.pdf
-% https://askubuntu.com/a/18691
-% Yes, this is using std-diff.pdf *twice*; the first time below ensures
-% contents page numbers are correct.
-\includepdf[pages=-]{std-diff.pdf}
+% Ensure the PDF as been flattened (e.g. qpdf --flatten-annotations) to
+% ensure changes are highlighted.
+\includepdf[pages=-]{std-diff-flattened.pdf}
 
-\section{Acknowledgements}
+% \section{Acknowledgements}
 
 \section{References}
 \renewcommand{\section}[2]{}%
 \begin{thebibliography}{9}
 
-  \bibitem[P3037R6]{P0784R6}
-    Paul Keir, Hana Dusíková,
-    Peter Dimov, Louis Dionne, Nina Ranns, Richard Smith, Daveed Vandevoorde,
-    \emph{\texttt{constexpr std::shared_ptr} and friends} (2025)\newline
+  \bibitem[P3037R6]{P3037R6}
+    Paul Keir, Hana Dusíková\newline
+    \emph{\texttt{constexpr std::shared\_ptr} and friends} (2025)\newline
     \url{https://wg21.link/P3037R6}
+
+  \bibitem[P2641R4]{P2641R4}
+    Barry Revzin, Daveed Vandevoorde\newline
+    \emph{Checking if a union alternative is active}
+    \url{https://wg21.link/P2641R4}
 
 \end{thebibliography}
 

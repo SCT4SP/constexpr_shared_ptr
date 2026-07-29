@@ -1249,6 +1249,20 @@ bool inout_tests_voidpp_conversion()
     b = b && s.p_ && 11 == *s.p_;
   }
 
+  // Creating an adaptor directly is (alas) only discouraged. At compile-time
+  // this test produces an error at least; adding mutable in out_ptr.h would
+  // hide this completely.
+  if !consteval {
+    smart_int s;
+    {
+      const std::out_ptr_t<smart_int, int*> op(s);
+      void** pp = op;
+      b = b && nullptr == *pp;
+      *pp = new int{15}; // UB: modifies a member of the const object op
+    }
+    b = b && s.p_ && 15 == *s.p_;
+  }
+
   return b;
 }
 

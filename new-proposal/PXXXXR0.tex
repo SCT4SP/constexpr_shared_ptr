@@ -96,8 +96,10 @@
 \newcommand*{\forkcommit}{fb46090}
 
 \date{}
-\title{\texttt{constexpr void**} conversion member functions for smart pointer adapters}
+\title{constexpr void** conversion member functions for smart pointer adaptors}
 
+\urlstyle{same} % Ensure \url uses the same font as \href
+\newcommand*{\Cpp}{C\texttt{++}}
 \newcommand{\emailaddressP}{paul.keir@uws.ac.uk}
 \newcommand{\emailaddressH}{cpp@hanicka.net}
 \newcommand{\emailP}{\href{mailto:\emailaddressP}{\emailaddressP}}
@@ -111,14 +113,14 @@
 
 \begin{flushright}
   \begin{tabular}{ll}
-  Document \#:&PXXXXR0\\
-  Date:       &\date{2026-07-28}\\
-  Project:    &Programming Language C++\\
-  Audience:   &SG7 Compile-time programming, LEWG Library Evolution\\
-  Reply-to:   &\author{Paul Keir}\\
-              &\textless\emailP\textgreater\\
-              &\author{Hana Dusíková}\\
-              &\textless\emailH\textgreater
+  Document\#:     &PXXXXR0\\
+  Date:           &\date{2026-07-28}\\
+  Project:        &Programming Language \Cpp{}\\
+  Audience:       &SG7 Compile-time programming, LEWG Library Evolution\\
+  Reply-to:       &Paul Keir \textless\emailP\textgreater\\
+                  &Hana Dusíková \textless\emailH\textgreater\\
+  Latest Version: &\url{https://wg21.link/PXXXX}\\
+  Github Issue:   &\url{https://wg21.link/PXXXX/github}
   \end{tabular}
 \end{flushright}
 
@@ -126,16 +128,25 @@
   \tableofcontents
 }
 
-\pagebreak
+% \pagebreak
 
-\section{Revision History}
+%\section{Revision History}
 
-For example: nothing.
+%For example: nothing.
 
 \section{Introduction}
 
-Adopted C++26 proposal \cite{P3037R6} allowed most functions from
-\wgxxi{smartptr} to receive the \texttt{constexpr} qualifier}.
+Adopted \Cpp{}26 proposal \cite{P3037R6} allowed \emph{almost} all functions
+from \wgxxi{smartptr} to receive the \texttt{constexpr} qualifier. Smart
+pointer adaptors were introduced to \Cpp{}23 by \cite{P1132R8}, and are
+specified in \wgxxi{smartptr.adapt}. Two class templates are included there
+(\texttt{std::out\_ptr\_t} and \texttt{std::inout\_ptr\_t}). Each includes a
+typed (\texttt{operator Pointer*()}), and an untyped (\texttt{operator
+void**()}) conversion member function. Previously, implementing the
+\emph{untyped} conversion member function without an ABI break was not
+possible. Since the adoption of \cite{P2738R1} and \cite{P2641R4} in \Cpp{}26
+however, these two remaining functions can now be implemented with no change to
+the ABI.
 
 % \cite{P0784R7}
 % \texttt{std::shared_ptr}
@@ -147,15 +158,47 @@ Adopted C++26 proposal \cite{P3037R6} allowed most functions from
 
 \section{Motivation and Scope}
 
-Motivation for this proposal is unchanged from that of \cite{P3037R6}: hygienic
-memory management and memory safety from the use of smart pointers should also
-be available during constant evaluation. Furthermore, language regularity is a
-worthy goal; ensuring that \emph{where possible} a user does not encounter a
-compilation error from the use of valid runtime code during constant
-evaluation.
+Motivation for this proposal is unchanged from that of \cite{P3037R6}: the
+hygienic memory management and memory safety offered by smart pointers should
+be available both at runtime and during constant evaluation. Furthermore,
+language regularity is a worthy goal; we wish to help ensure that where
+possible a user does not encounter a compilation error from the use of valid
+runtime code during constant evaluation.
 
-\emph{Cpp17Hash} requirements (\wgxxi{hash.requirements}) intervened for
-those with ``hash'' in their name, and 
+The \emph{Cpp17Hash} requirements of \wgxxi{hash.requirements} prevent
+functions in \wgxxi{smartptr} with ``hash'' in their (qualified) name from
+being invoked during constant evaluation. So too, the prohibition of
+\texttt{reinterpret\_cast} during constant evaluation ensures neither of the
+two \texttt{reinterpret\_pointer\_cast} overloads in
+\wgxxi{util.smartptr.shared.cast} should be qualified as \texttt{constexpr}.
+
+In contrast, both \texttt{std::out\_ptr\_t::operator() void** const} and
+\texttt{std::inout\_ptr\_t::operator() void** const} \emph{can} be
+evaluated during constant evaluation, and now in a way which does not increase
+the size of either \texttt{std::out\_ptr\_t} or \texttt{std::inout\_ptr\_t} (so
+avoiding an ABI break). We propose that both of these class template member
+functions should now be qualified as \texttt{constexpr}.
+
+As a reminder, \Cpp{}23 introduced the smart pointer adaptors:
+\texttt{std::out\_ptr\_t} and \texttt{std::inout\_ptr\_t}; as specified in
+\wgxxi{smartptr.adapt}. Objects of these class templates adapt types such as
+smart pointers for functions that use output pointer parameters. Smart pointer
+adaptors are intended strictly for use only as temporary objects, often created
+using the helper functions \texttt{std::out\_ptr} or \texttt{std::inout\_ptr},
+and typically created and destroyed as arguments to a function call such as
+\texttt{f} below:
+
+\begin{lstlisting}[language=cpp]
+constexpr bool sptr_out_ptr()
+{
+  std::shared_ptr<int> sp;
+  auto f = [&](void **pp) { *pp = new int{42}; };
+  f(std::out_ptr(sp, std::default_delete<int>{}));
+  return 42 == *sp;
+}
+
+static_assert(sptr_out_ptr());
+\end{lstlisting}
 
 \section{Impact on the Standard}
 
@@ -164,17 +207,77 @@ language features.
 
 \section{Implementation}
 
-An implementation
+The basic idea of the new ABI-preserving implementation was proposed by Hana.
+The key is the use of a union, containing both a typed and an untyped (i.e.
+\texttt{void*}) pointer:
+
+\begin{lstlisting}[language=cpp]
+struct smart_int
+{
+  union { int* p_; void* v_; };
+
+  constexpr  smart_int() : p_{} {}
+  constexpr ~smart_int() { delete get(); }
+
+  constexpr operator  int**() noexcept // const (let's keep the example simple)
+  {
+    if consteval {
+      if (!std::is_within_lifetime(&p_))  // C++26 after P2641R4
+        p_ = static_cast<int*>(v_);       // C++26 after P2738R1
+    }
+    return &p_;
+  }
+
+  constexpr operator void**() noexcept // const (let's keep the example simple)
+  {
+    if consteval {
+      if (!std::is_within_lifetime(&v_))
+        v_ = p_;
+    }
+    return &v_;
+  }
+
+  constexpr int* get() { return *static_cast<int**>(*this); }
+};
+\end{lstlisting}
+
+The size of a union is the same as its largest member. Here, both members
+have the same size, and a stable ABI becomes possible. While the runtime path
+may use \texttt{reinterpret\_cast} as ``a viable implementation strategy'' (see
+\wgxxi{out.ptr.t\#17} and \wgxxi{inout.ptr.t\#19}), during constant evaluation
+we can use \texttt{std::is\_within\_lifetime} to determine which union
+alternative is active (\cite{P2641R4}), while again adding nothing to the size
+of either smart pointer adapter. An assignment within either conversion
+operator can then update the active union alternative, using the \Cpp{}26
+facility to cast from \texttt{void*} (\cite{P2738R1}). A test of the expository
+\texttt{smart\_int} class example follows:
+
+\begin{lstlisting}[language=cpp]
+constexpr bool test()
+{
+  auto f = []( int**  pp) {  *pp = new int{1}; };
+  auto v = [](void** vpp) { *vpp = new int{2}; };
+
+  smart_int si1, si2;
+  f(si1);
+  v(si2);
+  return *si1.get() == 1 && *si2.get() == 2;
+}
+
+static_assert(test());
+\end{lstlisting}
+
+A full implementation
 %by the first author,
 based on libstdc++ can be found
 \href{https://github.com/SCT4SP/constexpr_shared_ptr/tree/smartptr-adapt}{here}.
 A comprehensive test suite is included there within
 \texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
 script to run it. The proposed changes are tested within the
-\texttt{inout\_tests\_voidpp\_conversion} function, and require a C++ compiler
-with feature macro \texttt{\_\_cpp\_lib\_is\_within\_lifetime} defined to a
-value greater than or equal to \texttt{202306L}. All tests pass with recent
-Clang.
+\texttt{inout\_tests\_voidpp\_conversion} function, and require a \Cpp{}
+compiler with feature macro \texttt{\_\_cpp\_lib\_is\_within\_lifetime} defined
+to a value greater than or equal to \texttt{202306L}. All tests pass with
+recent Clang.
 
 % \section{Polls}
 
@@ -187,11 +290,10 @@ Clang.
 
 %\href{https://github.com/cplusplus/draft/compare/\upstreamcommit...pkeir:draft:\forkcommit}{here}.
 
-Pages from the \emph{C++ Standard Draft Sources} which include wording changes
-proposed here are
+Pages from the \emph{\Cpp{} Standard Draft Sources} which include wording
+changes proposed here are
 % also
-provided on the following pages; with changes
-highlighted.
+provided on the following pages, with changes highlighted.
 
 % Ensure the PDF as been flattened (e.g. qpdf --flatten-annotations) to
 % ensure changes are highlighted.
@@ -203,15 +305,26 @@ highlighted.
 \renewcommand{\section}[2]{}%
 \begin{thebibliography}{9}
 
+  \bibitem[P1132R8]{P1132R8}
+    JeanHeyd Meneide, Todor Buyuklievi, Isabella Muerte\newline
+    \emph{out\_ptr - a scalable output pointer abstraction} (2021)\newline
+    \url{https://wg21.link/P1132R8}
+
+  \bibitem[P2641R4]{P2641R4}
+    Barry Revzin, Daveed Vandevoorde\newline
+    \emph{Checking if a union alternative is active} (2023)\newline
+    \url{https://wg21.link/P2641R4}
+
+  \bibitem[P2738R1]{P2738R1}
+    Corentin Jabot, David Ledger\newline
+    \emph{\texttt{constexpr} cast from \texttt{void*}: towards \texttt{constexpr} type-erasure} (2023)\newline
+    \url{https://wg21.link/P2738R1}
+
   \bibitem[P3037R6]{P3037R6}
     Paul Keir, Hana Dusíková\newline
     \emph{\texttt{constexpr std::shared\_ptr} and friends} (2025)\newline
     \url{https://wg21.link/P3037R6}
 
-  \bibitem[P2641R4]{P2641R4}
-    Barry Revzin, Daveed Vandevoorde\newline
-    \emph{Checking if a union alternative is active}
-    \url{https://wg21.link/P2641R4}
 
 \end{thebibliography}
 

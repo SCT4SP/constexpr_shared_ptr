@@ -1,4 +1,5 @@
 #include <type_traits>
+#include <cassert>
 
 static_assert(__cpp_lib_is_within_lifetime==202306L);
 
@@ -41,4 +42,9 @@ constexpr bool test()
   return *si1.get() == 1 && *si2.get() == 2;
 }
 
-static_assert(test());
+int main()
+{
+  static_assert(test());
+  assert(test());
+  return 0;
+}

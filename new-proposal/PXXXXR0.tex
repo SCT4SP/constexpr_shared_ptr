@@ -114,7 +114,7 @@
 \begin{flushright}
   \begin{tabular}{ll}
   Document\#:     &PXXXXR0\\
-  Date:           &\date{2026-07-28}\\
+  Date:           &\date{2026-07-30}\\
   Project:        &Programming Language \Cpp{}\\
   Audience:       &SG7 Compile-time programming, LEWG Library Evolution\\
   Reply-to:       &Paul Keir \textless\emailP\textgreater\\
@@ -145,8 +145,8 @@ typed (\texttt{operator Pointer*()}), and an untyped (\texttt{operator
 void**()}) conversion member function. Previously, implementing the
 \emph{untyped} conversion member function without an ABI break was not
 possible. Since the adoption of \cite{P2738R1} and \cite{P2641R4} in \Cpp{}26
-however, these two remaining functions can now be implemented with no change to
-the ABI.
+however, these two remaining functions can now be implemented with
+\texttt{constexpr} qualification, and no change to the ABI.
 
 % \cite{P0784R7}
 % \texttt{std::shared_ptr}
@@ -183,9 +183,9 @@ As a reminder, \Cpp{}23 introduced the smart pointer adaptors:
 \texttt{std::out\_ptr\_t} and \texttt{std::inout\_ptr\_t}; as specified in
 \wgxxi{smartptr.adapt}. Objects of these class templates adapt types such as
 smart pointers for functions that use output pointer parameters. Smart pointer
-adaptors are intended strictly for use only as temporary objects, often created
-using the helper functions \texttt{std::out\_ptr} or \texttt{std::inout\_ptr},
-and typically created and destroyed as arguments to a function call such as
+adaptors are intended for use only as temporary objects, often created using
+the helper functions \texttt{std::out\_ptr} or \texttt{std::inout\_ptr}, and
+typically created and destroyed as arguments to a function call such as
 \texttt{f} below:
 
 \begin{lstlisting}[language=cpp]
@@ -208,8 +208,8 @@ language features.
 \section{Implementation}
 
 The basic idea of the new ABI-preserving implementation was proposed by Hana.
-The key is the use of a union, containing both a typed and an untyped (i.e.
-\texttt{void*}) pointer:
+A key ingredient is the use of a union, containing both a typed and an untyped
+(i.e. \texttt{void*}) pointer. Consider this simplified example:
 
 \begin{lstlisting}[language=cpp]
 struct smart_int
@@ -273,11 +273,11 @@ based on libstdc++ can be found
 \href{https://github.com/SCT4SP/constexpr_shared_ptr/tree/smartptr-adapt}{here}.
 A comprehensive test suite is included there within
 \texttt{tests/shared\_ptr\_constexpr\_tests.cpp}; alongside a standalone bash
-script to run it. The proposed changes are tested within the
-\texttt{inout\_tests\_voidpp\_conversion} function, and require a \Cpp{}
-compiler with feature macro \texttt{\_\_cpp\_lib\_is\_within\_lifetime} defined
-to a value greater than or equal to \texttt{202306L}. All tests pass with
-recent Clang.
+script to run it (alongside \cite{P3037R6} tests). The proposed changes are
+tested within the \texttt{inout\_tests\_voidpp\_conversion} function, and
+require a \Cpp{} compiler with feature macro
+\texttt{\_\_cpp\_lib\_is\_within\_lifetime} defined to a value greater than or
+equal to \texttt{202306L}. All tests pass with recent Clang.
 
 % \section{Polls}
 
